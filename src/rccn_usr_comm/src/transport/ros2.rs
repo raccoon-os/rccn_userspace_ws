@@ -1,6 +1,6 @@
 use crossbeam_channel::{Receiver, Select, Sender};
-use futures::{executor::LocalPool, task::SpawnExt};
-use r2r::{rccn_usr_msgs::msg::RawBytes, Publisher, QosProfile};
+use rccn_usr::r2r::{rccn_usr_msgs::msg::RawBytes, Publisher, QosProfile};
+use rccn_usr::r2r;
 
 use super::{TransportHandler, TransportWriter};
 
@@ -9,7 +9,6 @@ pub enum Ros2TransportError {
     R2RError(r2r::Error),
 }
 pub struct Ros2TransportHandler {
-    ctx: r2r::Context,
     node: r2r::Node,
     publishers: Vec<TransportWriter<Publisher<RawBytes>>>
 }
@@ -20,7 +19,7 @@ impl Ros2TransportHandler {
         let node = r2r::Node::create(ctx.clone(), "rccn_usr_comm", "/")
             .map_err(Ros2TransportError::R2RError)?;
 
-        Ok(Self { ctx, node, publishers: Vec::new() })
+        Ok(Self { node, publishers: Vec::new() })
     }
 }
 
