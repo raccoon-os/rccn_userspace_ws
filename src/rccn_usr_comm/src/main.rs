@@ -5,7 +5,7 @@ use types::{VirtualChannelInMap, VirtualChannelOutMap};
 
 use config::{Config, InputTransport, OutputTransport};
 use frame_processor::FrameProcessor;
-use transport::{ros2::{self, Ros2TransportHandler}, TransportHandler, UdpTransportHandler};
+use rccn_usr::transport::{ros2::{self, Ros2TransportHandler}, TransportHandler, UdpTransportHandler};
 
 mod config;
 mod frame_processor;
