@@ -5,7 +5,13 @@ use rccn_usr::transport::{
     ros2::{Ros2ReaderConfig, Ros2TransportHandler},
     TransportHandler,
 };
-use spacepackets::{ecss::tc::PusTcReader, PacketId, PacketSequenceCtrl, SpHeader};
+use spacepackets::{
+    ecss::{
+        tc::PusTcReader,
+        tm::{PusTmCreator, PusTmSecondaryHeader}, WritablePusPacket,
+    },
+    PacketId, PacketSequenceCtrl, PacketType, SequenceFlags, SpHeader,
+};
 
 fn handle_tc_bytes(bytes: Vec<u8>, tm_tx: Sender<Vec<u8>>) {
     match PusTcReader::new(&bytes) {
@@ -15,16 +21,23 @@ fn handle_tc_bytes(bytes: Vec<u8>, tm_tx: Sender<Vec<u8>>) {
                 tc.app_data()
             );
 
-            println!("Sending some fake telemetry back");
-
             let fake_tm_header = SpHeader::new(
-                PacketId::new(spacepackets::PacketType::Tm, false, 1),
-                PacketSequenceCtrl::new(spacepackets::SequenceFlags::Unsegmented, 1234),
+                PacketId::new(PacketType::Tm, false, 1),
+                PacketSequenceCtrl::new(SequenceFlags::Unsegmented, 1234),
                 2,
             );
-            let tm_data = [0x13, 0x37];
 
-            tm_tx.send(Vec::from(fake_tm_header.to_vec().concat(tm_data)));
+            let payload = [0x13, 0x37];
+            let timestamp = [0u8; 7];
+            let tm = PusTmCreator::new(
+                fake_tm_header,
+                PusTmSecondaryHeader::new(130, 1, 0, 0, &timestamp),
+                &payload,
+                true,
+            );
+
+            println!("Sending some fake telemetry back");
+            let _ = tm_tx.send(tm.to_vec().unwrap());
         }
         Err(e) => {
             println!("Error getting source packet header: {e:?}");
