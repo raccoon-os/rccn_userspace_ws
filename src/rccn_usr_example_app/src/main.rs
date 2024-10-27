@@ -1,50 +1,59 @@
-use futures::{
-    executor::LocalPool,
-    task::SpawnExt,
-    StreamExt,
-};
-use rccn_usr::r2r::{self, rccn_usr_msgs::msg::RawBytes, QosProfile};
-use spacepackets::ecss::tc::PusTcReader;
+use std::thread;
 
-fn handle_msg(msg: RawBytes) {
-    match PusTcReader::new(&msg.data) {
+use crossbeam_channel::{bounded, Sender};
+use rccn_usr::transport::{
+    ros2::{Ros2ReaderConfig, Ros2TransportHandler},
+    TransportHandler,
+};
+use spacepackets::{ecss::tc::PusTcReader, PacketId, PacketSequenceCtrl, SpHeader};
+
+fn handle_tc_bytes(bytes: Vec<u8>, tm_tx: Sender<Vec<u8>>) {
+    match PusTcReader::new(&bytes) {
         Ok((tc, packet_size)) => {
             println!(
                 "Got PUS TC: {tc:?}, packet size {packet_size}, data {:?}",
                 tc.app_data()
             );
+
+            println!("Sending some fake telemetry back");
+
+            let fake_tm_header = SpHeader::new(
+                PacketId::new(spacepackets::PacketType::Tm, false, 1),
+                PacketSequenceCtrl::new(spacepackets::SequenceFlags::Unsegmented, 1234),
+                2,
+            );
+            let tm_data = [0x13, 0x37];
+
+            tm_tx.send(Vec::from(fake_tm_header.to_vec().concat(tm_data)));
         }
         Err(e) => {
             println!("Error getting source packet header: {e:?}");
         }
     }
 }
+fn main() {
+    let tc_rx_topic = "/vc/bus_realtime/rx";
+    let tm_tx_topic = "/vc/bus_realtime/tx";
 
-fn main() -> anyhow::Result<()> {
-    let mut pool = LocalPool::new();
-    let spawner = pool.spawner();
+    let (tc_in_tx, tc_in_rx) = bounded(32);
+    let (tm_out_tx, tm_out_rx) = bounded(32);
 
-    let ctx = r2r::Context::create()?;
-    let mut node = r2r::Node::create(ctx, "rccn_usr_example_app", "/")?;
-
-    let mut sub = node
-        .subscribe::<RawBytes>("/vc/bus_realtime/rx", QosProfile::default())
-        .unwrap();
-
-    spawner.spawn(async move {
-        loop {
-            match sub.next().await {
-                Some(msg) => handle_msg(msg),
-                None => {
-                    println!("Subscription closed, exiting.");
-                    break;
-                }
-            }
-        }
-    })?;
+    let mut ros2_handler = Ros2TransportHandler::new("rccn_usr_example_app".into()).unwrap();
+    ros2_handler.add_transport_reader(tc_in_tx, Ros2ReaderConfig::Subscription(tc_rx_topic.into()));
+    ros2_handler.add_transport_writer(tm_out_rx, tm_tx_topic.into());
+    thread::spawn(move || ros2_handler.run());
 
     loop {
-        node.spin_once(std::time::Duration::from_millis(100));
-        pool.run_until_stalled();
+        match tc_in_rx.recv() {
+            Ok(bytes) => {
+                handle_tc_bytes(bytes, tm_out_tx.clone());
+            }
+            Err(e) => {
+                println!("Error receiving from TC in channel. Exiting. {e:?}");
+                break;
+            }
+        }
     }
+
+    println!("Closing down.")
 }
