@@ -1,0 +1,114 @@
+use crossbeam_channel::{Receiver, Select, Sender};
+use futures::{executor::LocalPool, task::SpawnExt};
+use std::{
+    net::{SocketAddr, UdpSocket},
+    thread,
+};
+
+use super::{TransportError, TransportReader, TransportResult, TransportWriter, TRANSPORT_BUFFER_SIZE};
+
+use super::TransportHandler;
+
+pub struct UdpTransportHandler {
+    writers: Vec<TransportWriter<SocketAddr>>,
+    readers: Vec<TransportReader<SocketAddr>>,
+}
+
+impl UdpTransportHandler {
+    pub fn new() -> Self {
+        Self {
+            writers: Vec::new(),
+            readers: Vec::new(),
+        }
+    }
+}
+
+impl TransportHandler for UdpTransportHandler {
+    type Config = SocketAddr;
+
+    fn add_transport_writer(&mut self, rx: Receiver<Vec<u8>>, config: Self::Config) {
+        self.writers.push(TransportWriter { rx, conf: config });
+    }
+
+    fn add_transport_reader(&mut self, tx: Sender<Vec<u8>>, config: Self::Config) {
+        self.readers.push(TransportReader { tx, conf: config });
+    }
+
+    fn run(self) -> TransportResult {
+        let _readers_handle = thread::spawn(move || run_udp_transport_readers(self.readers));
+
+        let mut select = Select::new();
+
+        for TransportWriter { rx, conf: _ } in self.writers.iter() {
+            select.recv(rx);
+        }
+
+        let socket = UdpSocket::bind("0.0.0.0:0").map_err(TransportError::IO)?;
+
+        loop {
+            let op = select.select();
+            let index = op.index();
+
+            println!("RX channel {index} became available.");
+
+            let writer = &self.writers[index];
+            match op.recv(&writer.rx) {
+                Ok(data) => {
+                    let addr: SocketAddr = writer.conf;
+                    println!("Got data {data:?} for addr {:?}", addr);
+
+                    match socket.send_to(&data, addr) {
+                        Ok(len) => {
+                            println!("Sent {len} bytes to {:?}", addr);
+                        }
+                        Err(e) => {
+                            println!("Error sending bytes to {:?}: {e:?}", addr);
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("Got error receiving from RX channel ID {index}: {e:?}");
+                }
+            }
+        }
+    }
+}
+
+fn run_udp_transport_readers(readers: Vec<TransportReader<SocketAddr>>) {
+    let mut pool = LocalPool::new();
+    let spawner = pool.spawner();
+
+    for TransportReader { tx, conf } in readers {
+        let bind_addr = conf;
+        let tx = tx.clone();
+
+        spawner
+            .spawn(async move {
+                let mut buf = [0u8; TRANSPORT_BUFFER_SIZE];
+                let socket = async_std::net::UdpSocket::bind(bind_addr).await.unwrap();
+                println!("Listening on {bind_addr:?}.");
+
+                loop {
+                    match socket.recv_from(&mut buf).await {
+                        Ok((size, _addr)) => {
+                            let data_vec = Vec::from(&buf[..size]);
+
+                            if let Err(e) = tx.send(data_vec) {
+                                println!("Error sending data to channel: {:?}", e);
+                                break;
+                            } else {
+                                println!("Sent data {:?}", &buf[..size]);
+                            }
+                        }
+                        Err(e) => {
+                            println!("Error receiving from socket: {:?}", e);
+                            break;
+                        }
+                    }
+                }
+            })
+            .unwrap();
+    }
+
+    pool.run();
+}

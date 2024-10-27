@@ -1,0 +1,61 @@
+FROM ros:humble
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG ROS_DISTRO=humble
+ARG USERNAME=rosdev
+ARG UID=1000
+ARG GID=1000
+
+# Install system dependencies
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+        # Build tools
+        build-essential \
+        cmake \
+        git \
+        libclang-dev \
+        ninja-build \
+        pkg-config \
+        # Python
+        python3-pip \
+        python3-pytest \
+        # ROS2 base
+        ros-${ROS_DISTRO}-ros-base \
+        python3-colcon-common-extensions \
+        # Development tools
+        curl \
+        gdb \
+        less \
+        nano \
+        software-properties-common \
+        sudo \
+        vim \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Create user and setup permissions
+RUN groupadd -g $GID $USERNAME \
+    && useradd -lm -u $UID -g $USERNAME -s /bin/bash $USERNAME \
+    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+## Create home directory
+RUN mkdir -p /home/$USERNAME \
+    && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}
+
+# Switch to user
+USER $USERNAME
+WORKDIR /home/$USERNAME
+
+# Install Rust with specific version and components
+ENV RUST_VERSION=1.80.0
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${RUST_VERSION} \
+    && . /home/$USERNAME/.cargo/env \
+    && rustup component add clippy rustfmt llvm-tools-preview
+
+# Install cargo tools
+ENV PATH="/home/$USERNAME/.cargo/bin:${PATH}"
+RUN cargo install --locked \
+    cargo-ament-build \
+    cargo-audit \
+    cargo-edit \
+    cargo-watch

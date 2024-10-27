@@ -1,92 +1,53 @@
-# mkdir -p cross_compile/build
-# docker build . -f dockerfile.cross --platform linux/arm64 --output cross_compile/out  
+# Cross compilation Dockerfile for ARM64
+# Usage: mkdir -p cross_compile/build && docker build . -f Dockerfile.cross --platform linux/arm64 --output cross_compile/out
 
-FROM --platform=linux/arm64 docker.io/arm64v8/ros:humble-ros-core AS build
+FROM --platform=linux/arm64 base AS build
+
 ARG USERNAME=rosdev
-ARG GID=1000
 ARG UID=1000
+ARG GID=1000
+ARG OVERLAY_WS=/home/rosdev/ros_ws_install
 
-RUN apt update -q \
-    && apt upgrade -q -y \
-    && apt install -y --no-install-recommends \
-    software-properties-common \
-    python3-pip \
-    git \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-
-RUN apt-get update && apt-get install -y \
-    ros-humble-tf2 ros-humble-rosbag2 \
-    ros-humble-tf2-msgs-dbgsym ros-humble-rosbag2-interfaces-dbgsym && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && apt-get install -y \
-    curl libclang-dev build-essential sudo git && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN add-apt-repository ppa:deadsnakes/ppa
-RUN apt-get update && apt-get install -y python3.12 python3.12-dev python3.12-distutils && \
-    rm -rf /var/lib/apt/lists/*
-
-# Create and switch to user
+# Create user and workspace
 RUN groupadd -g $GID $USERNAME \
     && useradd -lm -u $UID -g $USERNAME -s /bin/bash $USERNAME \
-    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
+    && mkdir -p ${OVERLAY_WS} \
+    && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}
+
+# Switch to user
 USER $USERNAME
-
-RUN pip install uv
-
-RUN mkdir -p /home/$USERNAME
-
-# Create workspace so that user own this directory
-
-# Install rust
-RUN curl https://sh.rustup.rs -sSf | (bash -s -- -y)
-
-# Install cargo-ament-build
-ENV PATH="/home/$USERNAME/.cargo/bin:${PATH}"
-RUN cargo install cargo-ament-build
-
-# TODO: install cargo bitbake
-
-ARG OVERLAY_WS=/home/rosdev/ros_ws_install
-RUN mkdir -p $OVERLAY_WS
 WORKDIR $OVERLAY_WS
-# Install colcon to user-local pip
-RUN ~/.local/bin/uv venv --python 3.12 venv
-RUN . ./venv/bin/activate && \
-    ~/.local/bin/uv pip install git+https://github.com/colcon/colcon-cargo.git && \
-    ~/.local/bin/uv pip install git+https://github.com/colcon/colcon-ros-cargo.git && \
-    ~/.local/bin/uv pip install colcon-common-extensions
 
-RUN . ./venv/bin/activate && \
-    ~/.local/bin/uv pip install empy==3.3.4 # Workaround https://github.com/ros2/rosidl/issues/779 https://robotics.stackexchange.com/questions/109912/problem-with-building-nav2-on-ros-humble
+# Setup Python environment
+RUN pip install uv \
+    && ~/.local/bin/uv venv --python 3.12 .venv \
+    && . .venv/bin/activate \
+    && ~/.local/bin/uv pip install \
+        git+https://github.com/colcon/colcon-cargo.git \
+        git+https://github.com/colcon/colcon-ros-cargo.git \
+        colcon-common-extensions \
+        empy==3.3.4 \
+        lark \
+        numpy \
+        Cython \
+        bitstruct \
+        spacepackets
 
-RUN . ./venv/bin/activate && \
-    ~/.local/bin/uv pip install lark numpy Cython
-
+# Build workspace
 RUN --mount=type=bind,target=$OVERLAY_WS/src,source=./src \
     . /opt/ros/humble/setup.sh && \
-    . ./venv/bin/activate && \
-# ROSDEP install things
-    \
-    ~/.local/bin/uv pip install bitstruct spacepackets && \
-    \
-    touch venv/COLCON_IGNORE && \
-    colcon build  \
-      --event-handlers console_direct+ \
-      --packages-up-to thermal_test_controller
+    . .venv/bin/activate && \
+    touch .venv/COLCON_IGNORE && \
+    colcon build \
+        --event-handlers console_direct+ \
+        --packages-up-to thermal_test_controller
 
-RUN sed -i "s@$OVERLAY_WS/venv/bin/python3@/usr/bin/env python@" $(find . -type f -wholename "./install*/lib/*")
-RUN sed -i "s@COLCON_CURRENT_PREFIX=\"/opt/ros/humble\"@COLCON_CURRENT_PREFIX=\"/usr/opt/ros/humble\"@" ./install/setup.sh
+# Fix paths for deployment
+RUN sed -i "s@$OVERLAY_WS/.venv/bin/python3@/usr/bin/env python@" $(find . -type f -wholename "./install*/lib/*") && \
+    sed -i "s@COLCON_CURRENT_PREFIX=\"/opt/ros/humble\"@COLCON_CURRENT_PREFIX=\"/usr/opt/ros/humble\"@" ./install/setup.sh && \
+    rm .venv/bin/python
 
-# `python` is a symbolic link, remove it
-# so we can replace it with the real
-# binary in the next step
-RUN rm venv/bin/python
-
+# Create minimal output image
 FROM scratch
-ARG OVERLAY_WS=/home/rosdev/ros_ws_install
-COPY --from=build $OVERLAY_WS/install .
-#COPY --from=build $OVERLAY_WS/venv venv
-#COPY --from=build /usr/bin/python3.12 venv/bin/python
+COPY --from=build /home/rosdev/ros_ws_install/install .
