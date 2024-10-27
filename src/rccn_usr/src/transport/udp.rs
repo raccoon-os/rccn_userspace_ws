@@ -97,9 +97,7 @@ fn run_udp_transport_readers(readers: Vec<TransportReader<SocketAddr>>) {
                             if let Err(e) = tx.send(data_vec) {
                                 println!("Error sending data to channel: {:?}", e);
                                 break;
-                            } else {
-                                println!("Sent data {:?}", &buf[..size]);
-                            }
+                            } 
                         }
                         Err(e) => {
                             println!("Error receiving from socket: {:?}", e);

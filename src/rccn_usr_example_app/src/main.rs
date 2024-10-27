@@ -45,15 +45,17 @@ fn handle_tc_bytes(bytes: Vec<u8>, tm_tx: Sender<Vec<u8>>) {
     }
 }
 fn main() {
-    let tc_rx_topic = "/vc/bus_realtime/rx";
-    let tm_tx_topic = "/vc/bus_realtime/tx";
-
     let (tc_in_tx, tc_in_rx) = bounded(32);
     let (tm_out_tx, tm_out_rx) = bounded(32);
 
     let mut ros2_handler = Ros2TransportHandler::new("rccn_usr_example_app".into()).unwrap();
+
+    let tc_rx_topic = "/vc/bus_realtime/rx";
     ros2_handler.add_transport_reader(tc_in_tx, Ros2ReaderConfig::Subscription(tc_rx_topic.into()));
+
+    let tm_tx_topic = "/vc/bus_realtime/tx";
     ros2_handler.add_transport_writer(tm_out_rx, tm_tx_topic.into());
+
     thread::spawn(move || ros2_handler.run());
 
     loop {
