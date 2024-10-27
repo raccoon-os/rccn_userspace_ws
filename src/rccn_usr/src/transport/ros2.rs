@@ -5,8 +5,6 @@ use crossbeam_channel::{Receiver, Select, Sender};
 use futures::{executor::LocalPool, task::SpawnExt};
 use r2r::{rccn_usr_msgs::msg::RawBytes, Publisher, QosProfile};
 
-use crate::config::Ros2OutputTransport;
-
 use super::{TransportHandler, TransportReader, TransportWriter};
 
 #[allow(dead_code)] // Inner value is not read
@@ -17,7 +15,7 @@ pub enum Ros2TransportError {
 
 #[allow(dead_code)] // ActionServer not yet implemented
 #[derive(Debug)]
-pub enum Ros2Reader {
+pub enum Ros2ReaderConfig {
     Subscription(String),
     ActionServer(String),
 }
@@ -26,7 +24,7 @@ pub struct Ros2TransportHandler {
     ctx: r2r::Context,
     node: r2r::Node,
     publishers: Vec<TransportWriter<Publisher<RawBytes>>>,
-    readers: Vec<TransportReader<Ros2Reader>>,
+    readers: Vec<TransportReader<Ros2ReaderConfig>>,
     name_prefix: String,
 }
 
@@ -52,9 +50,9 @@ impl Ros2TransportHandler {
 
 impl TransportHandler for Ros2TransportHandler {
     type WriterConfig = String; // Topic to publish on
-    type ReaderConfig = Ros2OutputTransport; // This one is a bit more complicated.
-                                             // We can either subscribe to a topic, or start
-                                             // an action server.
+    type ReaderConfig = Ros2ReaderConfig; // This one is a bit more complicated.
+                                          // We can either subscribe to a topic, or start
+                                          // an action server.
 
     fn add_transport_writer(&mut self, rx: Receiver<Vec<u8>>, config: Self::WriterConfig) {
         let topic: String = config;
@@ -69,17 +67,8 @@ impl TransportHandler for Ros2TransportHandler {
         });
     }
 
-    fn add_transport_reader(&mut self, tx: Sender<Vec<u8>>, config: Self::ReaderConfig) {
-        if let Some(topic) = config.topic_sub {
-            self.readers.push(TransportReader {
-                tx,
-                conf: Ros2Reader::Subscription(topic),
-            });
-        } else if let Some(_action_srv) = config.action_srv {
-            todo!();
-        } else {
-            panic!("Your invalid config was somehow accepted. This should not happen.");
-        }
+    fn add_transport_reader(&mut self, tx: Sender<Vec<u8>>, conf: Self::ReaderConfig) {
+        self.readers.push(TransportReader { tx, conf });
     }
 
     fn run(self) -> super::TransportResult {
@@ -121,7 +110,7 @@ impl TransportHandler for Ros2TransportHandler {
 fn run_ros2_readers(
     ctx: r2r::Context,
     name_prefix: String,
-    readers: &Vec<TransportReader<Ros2Reader>>,
+    readers: &Vec<TransportReader<Ros2ReaderConfig>>,
 ) {
     let mut pool = LocalPool::new();
     let spawner = pool.spawner();
@@ -131,7 +120,7 @@ fn run_ros2_readers(
 
     for TransportReader { conf, tx } in readers.iter() {
         match conf {
-            Ros2Reader::Subscription(topic) => {
+            Ros2ReaderConfig::Subscription(topic) => {
                 let tx = tx.clone();
                 let topic = topic.clone();
 
@@ -158,7 +147,7 @@ fn run_ros2_readers(
                     })
                     .unwrap();
             }
-            Ros2Reader::ActionServer(_) => todo!(),
+            Ros2ReaderConfig::ActionServer(_) => todo!(),
         }
     }
 

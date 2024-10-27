@@ -5,11 +5,10 @@ use types::{VirtualChannelInMap, VirtualChannelOutMap};
 
 use config::{Config, InputTransport, OutputTransport};
 use frame_processor::FrameProcessor;
-use rccn_usr::transport::{ros2::{self, Ros2TransportHandler}, TransportHandler, UdpTransportHandler};
+use rccn_usr::transport::{ros2::{Ros2ReaderConfig, Ros2TransportHandler}, TransportHandler, UdpTransportHandler};
 
 mod config;
 mod frame_processor;
-mod transport;
 mod types;
 
 fn main() -> Result<()> {
@@ -72,7 +71,15 @@ fn main() -> Result<()> {
                 true
             }
             Some(OutputTransport::Ros2(ros2_transport)) => {
-                ros2_handler.add_transport_reader(vc_out_tx, ros2_transport.clone());
+                let reader_config = if let Some(topic) = &ros2_transport.topic_sub {
+                    Ros2ReaderConfig::Subscription(topic.clone())
+                } else if let Some(action_srv) = &ros2_transport.action_srv {
+                    Ros2ReaderConfig::ActionServer(action_srv.clone())
+                } else {
+                    panic!("Your invalid config has somehow made it here. This should not happen");
+                };
+
+                ros2_handler.add_transport_reader(vc_out_tx, reader_config);
 
                 true
             }
