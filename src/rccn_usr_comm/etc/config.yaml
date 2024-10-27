@@ -21,13 +21,9 @@ virtual_channels:
     in_transport:
       kind: ros2
       topic_pub: /vc/bus_realtime/rx
-      #kind: udp
-      #listen: 127.0.0.1:2500
     out_transport:
-      #kind: ros2
-      #topic_sub: /vc/bus_realtime/tx
-      kind: udp
-      send: 127.0.0.1:3500
+      kind: ros2
+      topic_sub: /vc/bus_realtime/tx
 
   - id: 1
     name: cfdp
@@ -39,8 +35,8 @@ virtual_channels:
       kind: udp
       send: 127.0.0.1:3000
 
-  - id: 2
-    name: bus_history
-    out_transport:
-      kind: ros2
-      action_srv: /vc/bus_history/downlink
+  #- id: 2
+  #  name: bus_history
+  #  out_transport:
+  #    kind: ros2
+  #    action_srv: /vc/bus_history/downlink

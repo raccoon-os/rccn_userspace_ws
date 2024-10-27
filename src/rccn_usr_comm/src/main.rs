@@ -5,7 +5,7 @@ use types::{VirtualChannelInMap, VirtualChannelOutMap};
 
 use config::{Config, InputTransport, OutputTransport};
 use frame_processor::FrameProcessor;
-use transport::{ros2::Ros2TransportHandler, TransportHandler, UdpTransportHandler};
+use transport::{ros2::{self, Ros2TransportHandler}, TransportHandler, UdpTransportHandler};
 
 mod config;
 mod frame_processor;
@@ -18,7 +18,7 @@ fn main() -> Result<()> {
 
     // Create transport handlers
     let mut udp_handler = UdpTransportHandler::new();
-    let mut ros2_handler = Ros2TransportHandler::new().unwrap();
+    let mut ros2_handler = Ros2TransportHandler::new("rccn_usr_comm".into()).unwrap();
 
     // Create channel for communication between the bytes-in
     // frame link and the frame processing task.
@@ -71,9 +71,10 @@ fn main() -> Result<()> {
 
                 true
             }
-            Some(OutputTransport::Ros2(_ros2_transport)) => {
-                // TODO
-                false
+            Some(OutputTransport::Ros2(ros2_transport)) => {
+                ros2_handler.add_transport_reader(vc_out_tx, ros2_transport.clone());
+
+                true
             }
             None => false, // No output transport configured.
         };
