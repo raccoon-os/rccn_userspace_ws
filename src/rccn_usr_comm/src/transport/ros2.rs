@@ -25,9 +25,10 @@ impl Ros2TransportHandler {
 }
 
 impl TransportHandler for Ros2TransportHandler {
-    type Config = String;
+    type WriterConfig = String;
+    type ReaderConfig = String;
 
-    fn add_transport_writer(&mut self, rx: Receiver<Vec<u8>>, config: Self::Config) {
+    fn add_transport_writer(&mut self, rx: Receiver<Vec<u8>>, config: Self::WriterConfig) {
         let topic: String = config;
         let subscription = self.node.create_publisher::<RawBytes>(&topic, QosProfile::default()).unwrap();
         self.publishers.push(TransportWriter { rx, conf: subscription });

@@ -28,9 +28,10 @@ pub type TransportResult = Result<(), TransportError>;
 pub const TRANSPORT_BUFFER_SIZE: usize = 8096;
 
 pub trait TransportHandler {
-    type Config;
+    type WriterConfig;
+    type ReaderConfig;
     
-    fn add_transport_writer(&mut self, rx: Receiver<Vec<u8>>, config: Self::Config);
-    fn add_transport_reader(&mut self, tx: Sender<Vec<u8>>, config: Self::Config);
+    fn add_transport_writer(&mut self, rx: Receiver<Vec<u8>>, config: Self::WriterConfig);
+    fn add_transport_reader(&mut self, tx: Sender<Vec<u8>>, config: Self::ReaderConfig);
     fn run(self) -> TransportResult;
 }

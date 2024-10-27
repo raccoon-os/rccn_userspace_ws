@@ -26,13 +26,14 @@ impl UdpTransportHandler {
 }
 
 impl TransportHandler for UdpTransportHandler {
-    type Config = SocketAddr;
+    type WriterConfig = SocketAddr;
+    type ReaderConfig = SocketAddr;
 
-    fn add_transport_writer(&mut self, rx: Receiver<Vec<u8>>, config: Self::Config) {
+    fn add_transport_writer(&mut self, rx: Receiver<Vec<u8>>, config: Self::WriterConfig) {
         self.writers.push(TransportWriter { rx, conf: config });
     }
 
-    fn add_transport_reader(&mut self, tx: Sender<Vec<u8>>, config: Self::Config) {
+    fn add_transport_reader(&mut self, tx: Sender<Vec<u8>>, config: Self::ReaderConfig) {
         self.readers.push(TransportReader { tx, conf: config });
     }
 
