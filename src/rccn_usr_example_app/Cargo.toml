@@ -1,0 +1,10 @@
+[package]
+name = "rccn_usr_example_app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.91"
+futures = "0.3.31"
+rccn_usr = { version = "0.1.0", path = "../rccn_usr" }
+spacepackets = "0.12.0"
