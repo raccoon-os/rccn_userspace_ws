@@ -4,6 +4,7 @@ use rccn_usr::r2r;
 
 use super::{TransportHandler, TransportWriter};
 
+#[allow(dead_code)] // Inner value is not read
 #[derive(Debug)]
 pub enum Ros2TransportError {
     R2RError(r2r::Error),
@@ -32,7 +33,7 @@ impl TransportHandler for Ros2TransportHandler {
         self.publishers.push(TransportWriter { rx, conf: subscription });
     }
 
-    fn add_transport_reader(&mut self, tx: Sender<Vec<u8>>, config: Self::Config) {
+    fn add_transport_reader(&mut self, _tx: Sender<Vec<u8>>, _config: Self::Config) {
         todo!()
     }
 
@@ -47,7 +48,6 @@ impl TransportHandler for Ros2TransportHandler {
             let index = op.index();
 
             let TransportWriter { rx, conf: ros2_pub } = &self.publishers[index];
-            
             match op.recv(rx) {
                 Ok(data) => {
                     println!("Got data on channel {}, publishing to topic.", index);

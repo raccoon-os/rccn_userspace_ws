@@ -5,7 +5,9 @@ use std::{
     thread,
 };
 
-use super::{TransportError, TransportReader, TransportResult, TransportWriter, TRANSPORT_BUFFER_SIZE};
+use super::{
+    TransportError, TransportReader, TransportResult, TransportWriter, TRANSPORT_BUFFER_SIZE,
+};
 
 use super::TransportHandler;
 
@@ -36,6 +38,7 @@ impl TransportHandler for UdpTransportHandler {
 
     fn run(self) -> TransportResult {
         let _readers_handle = thread::spawn(move || run_udp_transport_readers(self.readers));
+        let socket = UdpSocket::bind("0.0.0.0:0").map_err(TransportError::IO)?;
 
         let mut select = Select::new();
 
@@ -43,18 +46,15 @@ impl TransportHandler for UdpTransportHandler {
             select.recv(rx);
         }
 
-        let socket = UdpSocket::bind("0.0.0.0:0").map_err(TransportError::IO)?;
-
         loop {
             let op = select.select();
             let index = op.index();
 
             println!("RX channel {index} became available.");
 
-            let writer = &self.writers[index];
-            match op.recv(&writer.rx) {
+            let TransportWriter { rx, conf: addr } = &self.writers[index];
+            match op.recv(rx) {
                 Ok(data) => {
-                    let addr: SocketAddr = writer.conf;
                     println!("Got data {data:?} for addr {:?}", addr);
 
                     match socket.send_to(&data, addr) {
