@@ -125,7 +125,7 @@ impl TransportManager {
         Vec<JoinHandle<TransportResult>>,
     ) {
         (
-            (self.vc_tx_map.clone(), self.vc_rx_map.clone()),
+            (self.vc_tx_map, self.vc_rx_map),
             vec![
                 thread::spawn(move || self.udp_handler.run()),
                 thread::spawn(move || self.ros2_handler.run()),
