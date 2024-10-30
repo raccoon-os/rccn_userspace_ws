@@ -12,7 +12,7 @@ pub struct TransportManager {
 }
 
 impl TransportManager {
-    pub fn new(ros2_node_prefix: String) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(ros2_node_prefix: String) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         Ok(Self {
             udp_handler: UdpTransportHandler::new(),
             ros2_handler: Ros2TransportHandler::new(ros2_node_prefix)?,
