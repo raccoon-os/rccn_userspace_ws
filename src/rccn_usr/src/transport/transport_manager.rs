@@ -2,7 +2,7 @@ use std::{thread::{self, JoinHandle}, net::SocketAddr};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use thiserror::Error;
 use crate::{
-    config::{VirtualChannel, InputTransport, OutputTransport},
+    config::{VirtualChannel, TxTransport, RxTransport},
     types::{VirtualChannelInMap, VirtualChannelOutMap}
 };
 use super::{
@@ -40,11 +40,11 @@ impl TransportManager {
 
     pub fn add_virtual_channel(&mut self, vc: &VirtualChannel) -> Result<(), TransportManagerError> {
         // Setup input direction
-        if let Some(input_transport) = &vc.in_transport {
+        if let Some(tx_transport) = &vc.tx_transport {
             let (vc_in_tx, vc_in_rx) = bounded(32);
             
-            match input_transport {
-                InputTransport::Udp(addr) => {
+            match tx_transport {
+                TxTransport::Udp(addr) => {
                     let addr: SocketAddr = addr.listen.parse()
                         .map_err(|e| TransportManagerError::AddrParse(e))?;
                     self.add_udp_writer(vc_in_rx, addr);
@@ -58,11 +58,11 @@ impl TransportManager {
         }
 
         // Setup output direction
-        if let Some(output_transport) = &vc.out_transport {
+        if let Some(rx_transport) = &vc.rx_transport {
             let (vc_out_tx, vc_out_rx) = bounded(32);
             
-            match output_transport {
-                OutputTransport::Udp(addr) => {
+            match rx_transport {
+                RxTransport::Udp(addr) => {
                     let addr: SocketAddr = addr.send.parse()
                         .map_err(|e| TransportManagerError::AddrParse(e))?;
                     self.add_udp_reader(vc_out_tx, addr);

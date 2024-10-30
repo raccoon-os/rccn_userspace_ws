@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::{path::Path, io};
 use thiserror::Error;
 use rccn_usr::config::{
-    InputTransport, OutputTransport, VirtualChannel,
+    TxTransport, RxTransport, VirtualChannel,
 };
 
 #[derive(Error, Debug)]
@@ -25,13 +25,13 @@ pub enum FrameKind {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FrameConfig {
     pub frame_kind: FrameKind,
-    pub transport: InputTransport
+    pub transport: TxTransport
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FrameOutConfig {
     pub frame_kind: FrameKind,
-    pub transport: OutputTransport
+    pub transport: RxTransport
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]

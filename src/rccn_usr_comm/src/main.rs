@@ -1,6 +1,6 @@
 use crossbeam_channel::bounded;
 use std::{net::SocketAddr, sync::Arc, thread};
-use rccn_usr::{config::InputTransport, types::{VirtualChannelInMap, VirtualChannelOutMap}};
+use rccn_usr::{config::TxTransport, types::{VirtualChannelInMap, VirtualChannelOutMap}};
 
 use config::{Config};
 use frame_processor::FrameProcessor;
@@ -22,8 +22,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create input transport for the frames-in link
     match &config.frames.r#in.transport {
-        InputTransport::Udp(udp_input_transport) => {
-            let addr = udp_input_transport.listen.clone().parse()?;
+        TxTransport::Udp(udp_tx_transport) => {
+            let addr = udp_tx_transport.listen.clone().parse()?;
             transport_manager.add_udp_reader(bytes_in_tx, addr);
         }
         InputTransport::Ros2(_) => {
