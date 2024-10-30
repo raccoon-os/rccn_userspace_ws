@@ -1,7 +1,7 @@
 use std::thread;
 use rccn_usr::{
     config::VirtualChannel,
-    transport::{TransportManager, TxTransport, RxTransport, ros2::{Ros2TxTransport, Ros2RxTransport}},
+    transport::{config::{Ros2RxTransport, Ros2TxTransport}, RxTransport, TransportManager, TxTransport},
 };
 use spacepackets::{
     ecss::{
@@ -36,6 +36,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get the sender for our virtual channel
     let tm_sender = vc_out_map.get(&0).expect("VC 0 not found");
+
+
 
     // Process incoming TCs from the virtual channel
     if let Some(tc_receiver) = vc_in_map.get(&0) {

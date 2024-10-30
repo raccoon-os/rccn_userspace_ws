@@ -3,7 +3,7 @@ use crossbeam_channel::{bounded, Receiver, Sender};
 use thiserror::Error;
 use crate::{
     config::VirtualChannel,
-    types::{VirtualChannelInMap, VirtualChannelOutMap}
+    types::{VirtualChannelTxMap, VirtualChannelRxMap}
 };
 use super::{
     ros2::{Ros2ReaderConfig, Ros2TransportError, Ros2TransportHandler}, udp::UdpTransportHandler, RxTransport, TransportHandler, TransportResult, TxTransport
@@ -22,8 +22,8 @@ pub enum TransportManagerError {
 pub struct TransportManager {
     udp_handler: UdpTransportHandler,
     ros2_handler: Ros2TransportHandler,
-    vc_in_map: VirtualChannelInMap,
-    vc_out_map: VirtualChannelOutMap,
+    vc_tx_map: VirtualChannelTxMap,
+    vc_rx_map: VirtualChannelRxMap,
 }
 
 impl TransportManager {
@@ -31,8 +31,8 @@ impl TransportManager {
         Ok(Self {
             udp_handler: UdpTransportHandler::new(),
             ros2_handler: Ros2TransportHandler::new(ros2_node_prefix)?,
-            vc_in_map: VirtualChannelInMap::new(),
-            vc_out_map: VirtualChannelOutMap::new(),
+            vc_tx_map: VirtualChannelTxMap::new(),
+            vc_rx_map: VirtualChannelRxMap::new(),
         })
     }
 
@@ -52,7 +52,7 @@ impl TransportManager {
                 }
             }
             
-            self.vc_in_map.insert(vc.id, vc_in_tx);
+            self.vc_tx_map.insert(vc.id, vc_in_tx);
         }
 
         // Setup output direction
@@ -80,14 +80,14 @@ impl TransportManager {
                 }
             }
             
-            self.vc_out_map.insert(vc.id, vc_out_rx);
+            self.vc_rx_map.insert(vc.id, vc_out_rx);
         }
 
         Ok(())
     }
 
-    pub fn get_vc_maps(&self) -> (VirtualChannelInMap, VirtualChannelOutMap) {
-        (self.vc_in_map.clone(), self.vc_out_map.clone())
+    pub fn get_vc_maps(&self) -> (VirtualChannelTxMap, VirtualChannelRxMap) {
+        (self.vc_tx_map.clone(), self.vc_rx_map.clone())
     }
 
     pub fn add_udp_reader(&mut self, tx: Sender<Vec<u8>>, addr: std::net::SocketAddr) {

@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use ccsds_protocols::tc_transfer_frame::TcTransferFrame;
 
 use crate::config::{Config, FrameKind};
-use rccn_usr::types::{VcId, VirtualChannelInMap, VirtualChannelOutMap};
+use rccn_usr::types::{VcId, VirtualChannelTxMap, VirtualChannelRxMap};
 
 #[allow(dead_code)] // IO and SendError values are not read currently
 #[derive(Debug)]
@@ -38,7 +38,7 @@ impl FrameProcessor {
     pub fn process_incoming_frames(
         &self,
         bytes_in_rx: Receiver<Vec<u8>>,
-        vc_in_map: &VirtualChannelInMap,
+        vc_in_map: &VirtualChannelTxMap,
     ) -> FrameProcessingResult {
         let _state = Arc::clone(&self.shared_state);
 
@@ -109,7 +109,7 @@ impl FrameProcessor {
     fn distribute_vc_data(
         &self,
         frame: &TcTransferFrame<'_>,
-        vc_in_map: &VirtualChannelInMap,
+        vc_in_map: &VirtualChannelTxMap,
     ) -> FrameProcessingResult {
         if frame.get_spacecraft_id() != self.config.frames.spacecraft_id {
             return Err(FrameProcessingError::UnknownSpacecraft(
@@ -136,7 +136,7 @@ impl FrameProcessor {
         }
     }
 
-    pub fn process_frames_out(&self, _bytes_tx: Sender<Vec<u8>>, vc_out_map: &VirtualChannelOutMap) {
+    pub fn process_frames_out(&self, _bytes_tx: Sender<Vec<u8>>, vc_out_map: &VirtualChannelRxMap) {
         let mut select = Select::new();
         let mut channels = Vec::new();
         for (id, receiver) in vc_out_map {

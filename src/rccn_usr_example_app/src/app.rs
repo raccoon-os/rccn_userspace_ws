@@ -1,4 +1,4 @@
-use rccn_usr::{time::TimestampHelper, types::VirtualChannelOutMap};
+use rccn_usr::{time::TimestampHelper, types::VirtualChannelRxMap};
 use satrs::pus::verification::VerificationReporter;
 use spacepackets::
     ecss::{
@@ -17,7 +17,7 @@ type ServiceResult<T> = Result<T, PusServiceError>;
 pub struct PusServiceCommon<'a> {
     pub apid: u16,
     pub verification_reporter: VerificationReporter,
-    pub virtual_channel_tx: &'a VirtualChannelOutMap,
+    pub virtual_channel_tx: &'a VirtualChannelRxMap,
     pub timestamp_helper: TimestampHelper
 }
 
