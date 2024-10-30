@@ -10,6 +10,8 @@ crossbeam-channel = "0.5.8"
 async-std = "1.12.0"
 satrs = "0.2.1"
 thiserror = "1.0.65"
+serde_yaml = "0.9.34"
+serde = "1.0.214"
 
 [env]
 IDL_PACKAGE_FILTER = { value = "std_msgs;rccn_usr_msgs" }
