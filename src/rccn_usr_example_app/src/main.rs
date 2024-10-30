@@ -1,16 +1,20 @@
-use std::thread;
+use anyhow::Result;
 use rccn_usr::{
     config::VirtualChannel,
-    transport::{config::{Ros2RxTransport, Ros2TxTransport}, RxTransport, TransportManager, TxTransport},
+    transport::{
+        config::{Ros2RxTransport, Ros2TxTransport},
+        RxTransport, TransportManager, TxTransport,
+    },
 };
 use spacepackets::{
     ecss::{
         tc::PusTcReader,
-        tm::{PusTmCreator, PusTmSecondaryHeader}, WritablePusPacket,
+        tm::{PusTmCreator, PusTmSecondaryHeader},
+        WritablePusPacket,
     },
     PacketId, PacketSequenceCtrl, PacketType, SequenceFlags, SpHeader,
 };
-use anyhow::Result;
+use std::thread;
 
 mod app;
 
@@ -23,7 +27,9 @@ fn main() -> Result<()> {
         name: "bus_realtime".into(),
         splitter: None,
         tx_transport: Some(TxTransport::Ros2("/vc/bus_realtime/tx".into())),
-        rx_transport: Some(RxTransport::Ros2(Ros2RxTransport::with_topic("/vc/bus_realtime/rx"))),
+        rx_transport: Some(RxTransport::Ros2(Ros2RxTransport::with_topic(
+            "/vc/bus_realtime/rx",
+        ))),
     };
 
     transport_manager.add_virtual_channel(&vc)?;
@@ -34,47 +40,44 @@ fn main() -> Result<()> {
     let tm_sender = vc_tx_map.get(&0).expect("VC 0 not found");
 
     // Process incoming TCs from the virtual channel
-    if let Some(tc_receiver) = vc_rx_map.remove(&0) {
-        loop {
-            match tc_receiver.recv() {
-                Ok(bytes) => {
-                    match PusTcReader::new(&bytes) {
-                        Ok((tc, packet_size)) => {
-                            println!(
-                                "Got PUS TC: {tc:?}, packet size {packet_size}, data {:?}",
-                                tc.app_data()
-                            );
+    let tc_receiver = vc_rx_map.remove(&0).expect("VC 0 TC receiver not found");
+    loop {
+        match tc_receiver.recv() {
+            Ok(bytes) => match PusTcReader::new(&bytes) {
+                Ok((tc, packet_size)) => {
+                    println!(
+                        "Got PUS TC: {tc:?}, packet size {packet_size}, data {:?}",
+                        tc.app_data()
+                    );
 
-                            let fake_tm_header = SpHeader::new(
-                                PacketId::new(PacketType::Tm, false, 1),
-                                PacketSequenceCtrl::new(SequenceFlags::Unsegmented, 1234),
-                                2,
-                            );
+                    let fake_tm_header = SpHeader::new(
+                        PacketId::new(PacketType::Tm, false, 1),
+                        PacketSequenceCtrl::new(SequenceFlags::Unsegmented, 1234),
+                        2,
+                    );
 
-                            let payload = [0x13, 0x37];
-                            let timestamp = [0u8; 7];
-                            let tm = PusTmCreator::new(
-                                fake_tm_header,
-                                PusTmSecondaryHeader::new(130, 1, 0, 0, &timestamp),
-                                &payload,
-                                true,
-                            );
+                    let payload = [0x13, 0x37];
+                    let timestamp = [0u8; 7];
+                    let tm = PusTmCreator::new(
+                        fake_tm_header,
+                        PusTmSecondaryHeader::new(130, 1, 0, 0, &timestamp),
+                        &payload,
+                        true,
+                    );
 
-                            println!("Sending some fake telemetry back");
-                            if let Err(e) = tm_sender.send(tm.to_vec().unwrap()) {
-                                println!("Error sending TM: {e:?}");
-                                break;
-                            }
-                        }
-                        Err(e) => {
-                            println!("Error getting source packet header: {e:?}");
-                        }
+                    println!("Sending some fake telemetry back");
+                    if let Err(e) = tm_sender.send(tm.to_vec().unwrap()) {
+                        println!("Error sending TM: {e:?}");
+                        break;
                     }
                 }
                 Err(e) => {
-                    println!("Error receiving from TC channel. Exiting. {e:?}");
-                    break;
+                    println!("Error getting source packet header: {e:?}");
                 }
+            },
+            Err(e) => {
+                println!("Error receiving from TC channel. Exiting. {e:?}");
+                break;
             }
         }
     }
