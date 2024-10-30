@@ -1,19 +1,10 @@
-use std::{
-    any::Any,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-use rccn_usr::{
+use crate::{
     time::TimestampHelper,
-    types::{RccnEcssTmSender, VirtualChannelRxMap, VirtualChannelTxMap},
+    types::{RccnEcssTmSender, VirtualChannelTxMap},
 };
-use satrs::{
-    pus::EcssTmSenderExt,
-    spacepackets::{
-        ecss::{tc::PusTcReader, PusError, PusPacket},
-        CcsdsPacket,
-    },
-};
+use satrs::spacepackets::ecss::{tc::PusTcReader, PusError, PusPacket};
 use satrs::{
     pus::{
         verification::{
