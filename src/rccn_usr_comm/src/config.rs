@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::{path::Path, io};
 use thiserror::Error;
-use rccn_usr::types::VcId;
+use rccn_usr::config::{
+    InputTransport, OutputTransport, VirtualChannel,
+};
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
@@ -13,91 +15,36 @@ pub enum ConfigError {
     Validation(String),
 }
 
-macro_rules! config_structs {
-    ($($item:item)*) => {
-        $(
-            #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-            $item
-        )*
-    };
-}
-
-macro_rules! config_enums {
-    ($($item:item)*) => {
-        $(
-            #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-            #[serde(tag = "kind", rename_all = "lowercase")]
-            $item
-        )*
-    };
-}
-
-config_structs! {
-    pub struct UdpInputTransport {
-        pub listen: String
-    }
-
-    pub struct UdpOutputTransport {
-        pub send: String
-    }
-
-    pub struct Ros2InputTransport {
-        pub topic_pub: String
-    }
-
-    pub struct Ros2OutputTransport {
-        pub topic_sub: Option<String>,
-        pub action_srv: Option<String>
-    }
-
-    pub struct FrameConfig {
-        pub frame_kind: FrameKind,
-        pub transport: InputTransport
-    }
-
-    pub struct FrameOutConfig {
-        pub frame_kind: FrameKind,
-        pub transport: OutputTransport
-    }
-
-    pub struct VirtualChannel {
-        pub id: VcId,
-        pub name: String,
-        pub splitter: Option<String>,
-        pub in_transport: Option<InputTransport>,
-        pub out_transport: Option<OutputTransport>
-    }
-
-    pub struct Frames {
-        pub spacecraft_id: u16,
-        pub r#in: FrameConfig,
-        pub out: FrameOutConfig
-    }
-
-    pub struct Config {
-        pub frames: Frames,
-        pub virtual_channels: Vec<VirtualChannel>
-    }
-}
-
-config_enums! {
-    pub enum InputTransport {
-        Udp(UdpInputTransport),
-        Ros2(Ros2InputTransport)
-    }
-
-    pub enum OutputTransport {
-        Udp(UdpOutputTransport),
-        Ros2(Ros2OutputTransport)
-    }
-}
-
-// Special case, we need Copy for FrameKind ... and I'm not good at rust macros
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum FrameKind {
     Tc,
     Uslp,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct FrameConfig {
+    pub frame_kind: FrameKind,
+    pub transport: InputTransport
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct FrameOutConfig {
+    pub frame_kind: FrameKind,
+    pub transport: OutputTransport
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Frames {
+    pub spacecraft_id: u16,
+    pub r#in: FrameConfig,
+    pub out: FrameOutConfig
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Config {
+    pub frames: Frames,
+    pub virtual_channels: Vec<VirtualChannel>
 }
 
 
@@ -118,11 +65,10 @@ impl Config {
             return Err(ConfigError::Validation("Output frame kind must be USLP".into()));
         }
 
-        // Validate virtual channels: check IDs are unique check ROS2 output transports
+        // Validate virtual channels: check IDs are unique and ROS2 output transports
+        let mut seen_ids = std::collections::HashSet::new();
         for vc in &self.virtual_channels {
-            if self.virtual_channels.iter()
-                .filter(|other| other.id == vc.id)
-                .count() > 1 {
+            if !seen_ids.insert(vc.id) {
                 return Err(ConfigError::Validation(format!("Duplicate virtual channel ID: {}", vc.id)));
             }
 
