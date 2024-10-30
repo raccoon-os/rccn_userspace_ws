@@ -6,7 +6,7 @@ use futures::{executor::LocalPool, task::SpawnExt};
 use r2r::{rccn_usr_msgs::msg::RawBytes, Publisher, QosProfile};
 use thiserror::Error;
 
-use super::{TransportHandler, TransportReader, TransportWriter};
+use super::{TransportHandler, TransportReader, TransportResult, TransportWriter};
 
 #[allow(dead_code)] // Inner value is not read
 #[derive(Error, Debug)]
@@ -73,10 +73,13 @@ impl TransportHandler for Ros2TransportHandler {
         self.readers.push(TransportReader { tx, conf });
     }
 
-    fn run(self) -> super::TransportResult {
+    fn run(self) -> TransportResult {
         let _readers_handle = thread::spawn(move || {
             run_ros2_readers(self.ctx.clone(), self.name_prefix, &self.readers)
         });
+        if self.publishers.len() == 0 {
+            return Ok(())
+        }
 
         let mut select = Select::new();
         for TransportWriter { rx, conf: _ } in self.publishers.iter() {
@@ -114,6 +117,10 @@ fn run_ros2_readers(
     name_prefix: String,
     readers: &Vec<TransportReader<Ros2ReaderConfig>>,
 ) {
+    if readers.len() == 0 {
+        return;
+    }
+
     let mut pool = LocalPool::new();
     let spawner = pool.spawner();
 

@@ -23,10 +23,10 @@ fn main() -> Result<()> {
         name: "bus_realtime".into(),
         splitter: None,
         tx_transport: Some(TxTransport::Ros2(Ros2TxTransport {
-            topic_pub: "/vc/bus_realtime/rx".into(),
+            topic_pub: "/vc/bus_realtime/tx".into(),
         })),
         rx_transport: Some(RxTransport::Ros2(Ros2RxTransport {
-            topic_sub: Some("/vc/bus_realtime/tx".into()),
+            topic_sub: Some("/vc/bus_realtime/rx".into()),
             action_srv: None,
         })),
     };

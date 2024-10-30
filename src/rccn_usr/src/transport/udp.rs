@@ -39,6 +39,10 @@ impl TransportHandler for UdpTransportHandler {
 
     fn run(self) -> TransportResult {
         let _readers_handle = thread::spawn(move || run_udp_transport_readers(self.readers));
+        if self.writers.len() == 0 {
+            return Ok(())
+        }
+
         let socket = UdpSocket::bind("0.0.0.0:0").map_err(TransportError::IO)?;
 
         let mut select = Select::new();
@@ -76,6 +80,10 @@ impl TransportHandler for UdpTransportHandler {
 }
 
 fn run_udp_transport_readers(readers: Vec<TransportReader<SocketAddr>>) {
+    if readers.len() == 0 {
+        return;
+    }
+
     let mut pool = LocalPool::new();
     let spawner = pool.spawner();
 

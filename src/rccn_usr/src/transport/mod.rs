@@ -3,6 +3,7 @@ pub mod ros2;
 pub mod manager;
 pub mod config;
 
+use thiserror::Error;
 pub use udp::*;
 pub use manager::TransportManager;
 pub use config::{TxTransport, RxTransport};
@@ -11,10 +12,13 @@ use crossbeam_channel::{SendError, Sender, Receiver};
 use std::io;
 
 #[allow(dead_code)] // Inner values not read currently
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum TransportError {
-    IO(io::Error),
-    SendError(SendError<Vec<u8>>),
+    #[error("IO error {0}")]
+    IO(#[from] io::Error),
+
+    #[error("Error sending to channel {0}")]
+    SendError(#[from] SendError<Vec<u8>>),
 }
 
 pub struct TransportWriter<T> {
