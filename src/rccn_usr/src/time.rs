@@ -10,6 +10,12 @@ pub struct TimestampHelper {
 }
 
 impl TimestampHelper {
+    pub fn new() -> Self {
+        Self {
+            timestamp: [0u8; 8]
+        }
+    }
+
     pub fn stamp(&self) -> &[u8] {
         &self.timestamp
     }
