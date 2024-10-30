@@ -1,53 +1,15 @@
 use rccn_usr::{
     service::{
-        CommandParseError, CommandParseResult, PusService, PusServiceBase, ServiceCommand,
-        ServiceResult,
+        PusService, PusServiceBase, ServiceResult,
     },
     types::VirtualChannelTxMap,
 };
 use satrs::{
     pus::verification::TcStateAccepted,
     pus::verification::VerificationToken,
-    spacepackets::ecss::{tc::PusTcReader, PusPacket},
 };
 
-pub enum ExampleServiceCommand {
-    StartSdrRecording {
-        center_freq_hz: u32,
-        bandwidth: u32,
-        duration_seconds: u16,
-    },
-    GenerateRandomFile {
-        filename: String,
-    },
-}
-
-impl ServiceCommand for ExampleServiceCommand {
-    fn from_pus_tc(tc: &PusTcReader) -> CommandParseResult<Self>
-    where
-        Self: Sized,
-    {
-        match tc.subservice() {
-            1 => {
-                // StartSdrRecording
-
-                Ok(Self::StartSdrRecording {
-                    center_freq_hz: 2_000_000_000,
-                    bandwidth: 1_000_000,
-                    duration_seconds: 100,
-                })
-            }
-            2 => {
-                // GenerateRandomFile
-
-                Ok(Self::GenerateRandomFile {
-                    filename: "hello_world.bin".into(),
-                })
-            }
-            _ => Err(CommandParseError::UnknownSubservice(tc.subservice())),
-        }
-    }
-}
+use crate::command::ExampleServiceCommand;
 
 pub struct ExampleService {
     service_base: PusServiceBase,
@@ -69,7 +31,7 @@ impl PusService for ExampleService {
     }
 
     fn handle_tc(
-        &self,
+        &mut self,
         tc: &Self::CommandT,
         _token: VerificationToken<TcStateAccepted>,
     ) -> ServiceResult<()> {

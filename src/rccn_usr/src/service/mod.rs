@@ -6,7 +6,7 @@ use crate::{
 };
 use satrs::{
     pus::verification::TcStateAccepted,
-    spacepackets::ecss::{tc::PusTcReader, PusError, PusPacket},
+    spacepackets::{ecss::{tc::PusTcReader, PusError, PusPacket}, CcsdsPacket},
 };
 use satrs::{
     pus::{
@@ -142,15 +142,14 @@ pub trait PusService {
     fn get_service_base(&mut self) -> &mut PusServiceBase;
 
     fn handle_tc(
-        &self,
+        &mut self,
         tc: &Self::CommandT,
         token: VerificationToken<TcStateAccepted>,
     ) -> ServiceResult<()>;
 
     fn handle_tc_bytes(&mut self, bytes: &[u8]) -> AcceptanceResult {
-        let base = self.get_service_base();
-
         // ST[01] verification util
+        let base = self.get_service_base();
         let mut reporter = base.verification_reporter.clone();
 
         let pus_tc = match PusTcReader::new(&bytes) {
@@ -165,8 +164,16 @@ pub trait PusService {
         let token = reporter.add_tc(&pus_tc);
         base.timestamp_helper.update_from_now();
 
+        // Check if the TC is destined for this APID
+        if pus_tc.sp_header().apid() != base.apid {
+            // It's not. Return early but don't send an acceptance failure.
+            return Err(AcceptanceError::UnknownApid(pus_tc.sp_header().apid()));
+        }
+
         // Check if the TC is destined for this service
         if pus_tc.service() != base.service {
+            // It's not. Return early but don't send an acceptance failure
+            // (there may be other services on this APID) that can respond to this.
             return Err(AcceptanceError::UnknownService(pus_tc.service()));
         }
 

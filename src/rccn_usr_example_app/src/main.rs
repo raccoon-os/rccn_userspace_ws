@@ -1,22 +1,13 @@
 use anyhow::Result;
-use example_service::ExampleService;
 use rccn_usr::{
-    config::VirtualChannel, service::PusService, transport::{
-        config::{Ros2RxTransport, Ros2TxTransport},
-        RxTransport, TransportManager, TxTransport,
-    }
+    config::VirtualChannel,
+    service::{AcceptanceError, PusService},
+    transport::{config::Ros2RxTransport, RxTransport, TransportManager, TxTransport},
 };
-use spacepackets::{
-    ecss::{
-        tc::PusTcReader,
-        tm::{PusTmCreator, PusTmSecondaryHeader},
-        WritablePusPacket,
-    },
-    PacketId, PacketSequenceCtrl, PacketType, SequenceFlags, SpHeader,
-};
-use std::thread;
+use service::ExampleService;
 
-mod example_service;
+mod command;
+mod service;
 
 fn main() -> Result<()> {
     let mut transport_manager = TransportManager::new("rccn_usr_example_app".into())?;
@@ -43,16 +34,17 @@ fn main() -> Result<()> {
     let tc_receiver = vc_rx_map.remove(&0).expect("VC 0 TC receiver not found");
     loop {
         match tc_receiver.recv() {
-            Ok(bytes) => {
-                match example_service.handle_tc_bytes(&bytes) {
-                    Ok(()) => {
-                        println!("Command handled succesfully.");
-                    }
-                    Err(e) => {
-                        println!("Error handling command: {e:?}");
-                    }
+            Ok(bytes) => match example_service.handle_tc_bytes(&bytes) {
+                Ok(()) => {
+                    println!("Command handled succesfully.");
                 }
-            }
+                Err(AcceptanceError::UnknownApid(apid)) => {
+                    println!("Command was for APID {apid}, ignoring.");
+                }
+                Err(e) => {
+                    println!("Error handling command: {e:?}");
+                }
+            },
             Err(e) => {
                 println!("TC RX channel closed, exiting. {e:?}");
                 break;

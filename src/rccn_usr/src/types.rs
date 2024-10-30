@@ -23,9 +23,11 @@ impl EcssTmSender for RccnEcssTmSender {
             PusTmVariant::Direct(creator) => creator
         }; 
 
-        let mut counter = self.msg_counter.lock().unwrap();
-        tm_creator.set_msg_counter(*counter);
-        *counter += 1;
+        { // New block to limit the lifetime of the mutex guard
+            let mut counter = self.msg_counter.lock().unwrap();
+            tm_creator.set_msg_counter(*counter);
+            *counter += 1;
+        }
 
         let bytes = tm_creator.to_vec()?;
 
