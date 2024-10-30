@@ -1,10 +1,10 @@
 use anyhow::Result;
+use example_service::ExampleService;
 use rccn_usr::{
-    config::VirtualChannel,
-    transport::{
+    config::VirtualChannel, service::PusService, transport::{
         config::{Ros2RxTransport, Ros2TxTransport},
         RxTransport, TransportManager, TxTransport,
-    },
+    }
 };
 use spacepackets::{
     ecss::{
@@ -16,7 +16,7 @@ use spacepackets::{
 };
 use std::thread;
 
-mod app;
+mod example_service;
 
 fn main() -> Result<()> {
     let mut transport_manager = TransportManager::new("rccn_usr_example_app".into())?;
@@ -31,52 +31,30 @@ fn main() -> Result<()> {
             "/vc/bus_realtime/rx",
         ))),
     };
-
     transport_manager.add_virtual_channel(&vc)?;
-    //let (vc_in_map, vc_out_map) = transport_manager.get_vc_maps();
-    let ((vc_tx_map, mut vc_rx_map), transport_handles) = transport_manager.run();
 
-    // Get the sender for our virtual channel
-    let tm_sender = vc_tx_map.get(&0).expect("VC 0 not found");
+    // Create our ExampleService
+    let mut example_service = ExampleService::new(42, transport_manager.get_vc_maps().0);
+
+    // Start the transport manager
+    let ((_, mut vc_rx_map), transport_handles) = transport_manager.run();
 
     // Process incoming TCs from the virtual channel
     let tc_receiver = vc_rx_map.remove(&0).expect("VC 0 TC receiver not found");
     loop {
         match tc_receiver.recv() {
-            Ok(bytes) => match PusTcReader::new(&bytes) {
-                Ok((tc, packet_size)) => {
-                    println!(
-                        "Got PUS TC: {tc:?}, packet size {packet_size}, data {:?}",
-                        tc.app_data()
-                    );
-
-                    let fake_tm_header = SpHeader::new(
-                        PacketId::new(PacketType::Tm, false, 1),
-                        PacketSequenceCtrl::new(SequenceFlags::Unsegmented, 1234),
-                        2,
-                    );
-
-                    let payload = [0x13, 0x37];
-                    let timestamp = [0u8; 7];
-                    let tm = PusTmCreator::new(
-                        fake_tm_header,
-                        PusTmSecondaryHeader::new(130, 1, 0, 0, &timestamp),
-                        &payload,
-                        true,
-                    );
-
-                    println!("Sending some fake telemetry back");
-                    if let Err(e) = tm_sender.send(tm.to_vec().unwrap()) {
-                        println!("Error sending TM: {e:?}");
-                        break;
+            Ok(bytes) => {
+                match example_service.handle_tc_bytes(&bytes) {
+                    Ok(()) => {
+                        println!("Command handled succesfully.");
+                    }
+                    Err(e) => {
+                        println!("Error handling command: {e:?}");
                     }
                 }
-                Err(e) => {
-                    println!("Error getting source packet header: {e:?}");
-                }
-            },
+            }
             Err(e) => {
-                println!("Error receiving from TC channel. Exiting. {e:?}");
+                println!("TC RX channel closed, exiting. {e:?}");
                 break;
             }
         }

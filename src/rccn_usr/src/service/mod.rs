@@ -4,7 +4,10 @@ use crate::{
     time::TimestampHelper,
     types::{RccnEcssTmSender, VirtualChannelTxMap},
 };
-use satrs::spacepackets::ecss::{tc::PusTcReader, PusError, PusPacket};
+use satrs::{
+    pus::verification::TcStateAccepted,
+    spacepackets::ecss::{tc::PusTcReader, PusError, PusPacket},
+};
 use satrs::{
     pus::{
         verification::{
@@ -21,7 +24,7 @@ pub enum PusServiceError {
     PusError(PusError),
 }
 
-type ServiceResult<T> = Result<T, PusServiceError>;
+pub type ServiceResult<T> = Result<T, PusServiceError>;
 
 #[derive(Clone)]
 pub struct PusServiceBase {
@@ -89,10 +92,11 @@ impl PusServiceBase {
 
 #[derive(Debug, Clone)]
 pub enum CommandParseError {
-    Unknown(),
+    UnknownSubservice(u8),
+    Other,
 }
 
-type CommandParseResult<T> = Result<T, CommandParseError>;
+pub type CommandParseResult<T> = Result<T, CommandParseError>;
 
 #[derive(Debug, Clone)]
 #[repr(u8)]
@@ -102,8 +106,9 @@ pub enum AcceptanceError {
     UnknownService(u8),
     UnknownSubservice(u8),
     CommandParseError(CommandParseError),
-    ArgumentError(),
-    ServiceDisconnected(),
+    ArgumentError,
+    ServiceDisconnected,
+    SendVerificationTmFailed
 }
 
 impl Into<EcssEnumU8> for AcceptanceError {
@@ -114,8 +119,9 @@ impl Into<EcssEnumU8> for AcceptanceError {
             AcceptanceError::UnknownService(_) => 3,
             AcceptanceError::UnknownSubservice(_) => 4,
             AcceptanceError::CommandParseError(_) => 5,
-            AcceptanceError::ArgumentError() => 6,
-            AcceptanceError::ServiceDisconnected() => 7,
+            AcceptanceError::ArgumentError => 6,
+            AcceptanceError::ServiceDisconnected => 7,
+            AcceptanceError::SendVerificationTmFailed => 8
         };
 
         EcssEnumU8::new(tag)
@@ -133,11 +139,15 @@ pub trait ServiceCommand {
 pub trait PusService {
     type CommandT: ServiceCommand;
 
-    fn get_service_base(&self) -> &mut PusServiceBase;
+    fn get_service_base(&mut self) -> &mut PusServiceBase;
 
-    fn handle_tc(&self, tc: &Self::CommandT) -> ServiceResult<()>;
+    fn handle_tc(
+        &self,
+        tc: &Self::CommandT,
+        token: VerificationToken<TcStateAccepted>,
+    ) -> ServiceResult<()>;
 
-    fn handle_tc_bytes(&self, bytes: &[u8]) -> AcceptanceResult {
+    fn handle_tc_bytes(&mut self, bytes: &[u8]) -> AcceptanceResult {
         let base = self.get_service_base();
 
         // ST[01] verification util
@@ -174,6 +184,22 @@ pub trait PusService {
 
             err
         })?;
+
+        base.timestamp_helper.update_from_now();
+
+        // Send TC accepted telemetry, get TC accepted token
+        let accepted_token = reporter
+            .acceptance_success(
+                &base.get_default_tm_sender(),
+                token,
+                base.timestamp_helper.stamp(),
+            )
+            .map_err(|err| {
+                println!("Error sending acceptance success telemetry: {err}");
+                AcceptanceError::SendVerificationTmFailed
+            })?;
+
+        let _ = self.handle_tc(&app_tc, accepted_token);
 
         Ok(())
     }
