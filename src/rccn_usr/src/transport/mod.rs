@@ -1,7 +1,9 @@
 pub mod udp;
 pub mod ros2;
+pub mod transport_manager;
 
 pub use udp::*;
+pub use transport_manager::TransportManager;
 
 use crossbeam_channel::{SendError, Sender, Receiver};
 use std::io;

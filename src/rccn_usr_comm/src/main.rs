@@ -5,7 +5,7 @@ use rccn_usr::types::{VirtualChannelInMap, VirtualChannelOutMap};
 
 use config::{Config, InputTransport, OutputTransport};
 use frame_processor::FrameProcessor;
-use rccn_usr::transport::{ros2::{Ros2ReaderConfig, Ros2TransportHandler}, TransportHandler, UdpTransportHandler};
+use rccn_usr::transport::{TransportManager, ros2::Ros2ReaderConfig};
 
 mod config;
 mod frame_processor;
@@ -14,9 +14,8 @@ fn main() -> Result<()> {
     let config = Arc::new(Config::from_file("etc/config.yaml")?);
     println!("Loaded configuration: {:#?}", config);
 
-    // Create transport handlers
-    let mut udp_handler = UdpTransportHandler::new();
-    let mut ros2_handler = Ros2TransportHandler::new("rccn_usr_comm".into()).unwrap();
+    // Create transport manager
+    let mut transport_manager = TransportManager::new("rccn_usr_comm".into())?;
 
     // Create channel for communication between the bytes-in
     // frame link and the frame processing task.
@@ -26,7 +25,7 @@ fn main() -> Result<()> {
     match &config.frames.r#in.transport {
         InputTransport::Udp(udp_input_transport) => {
             let addr = udp_input_transport.listen.clone().parse()?;
-            udp_handler.add_transport_reader(bytes_in_tx, addr);
+            transport_manager.add_udp_reader(bytes_in_tx, addr);
         }
         InputTransport::Ros2(_) => {
             todo!();
@@ -47,11 +46,11 @@ fn main() -> Result<()> {
         let rx_added = match &vc.in_transport {
             Some(InputTransport::Udp(addr)) => {
                 let addr: SocketAddr = addr.listen.clone().parse()?;
-                udp_handler.add_transport_writer(vc_in_rx, addr);
+                transport_manager.add_udp_writer(vc_in_rx, addr);
                 true
             }
             Some(InputTransport::Ros2(ros2_transport)) => {
-                ros2_handler.add_transport_writer(vc_in_rx, ros2_transport.topic_pub.clone());
+                transport_manager.add_ros2_writer(vc_in_rx, ros2_transport.topic_pub.clone());
                 true
             }
             _ => false,
@@ -65,8 +64,7 @@ fn main() -> Result<()> {
         let tx_added = match &vc.out_transport {
             Some(OutputTransport::Udp(addr)) => {
                 let addr = addr.send.clone().parse()?;
-                udp_handler.add_transport_reader(vc_out_tx, addr);
-
+                transport_manager.add_udp_reader(vc_out_tx, addr);
                 true
             }
             Some(OutputTransport::Ros2(ros2_transport)) => {
@@ -78,8 +76,7 @@ fn main() -> Result<()> {
                     panic!("Your invalid config has somehow made it here. This should not happen");
                 };
 
-                ros2_handler.add_transport_reader(vc_out_tx, reader_config);
-
+                transport_manager.add_ros2_reader(vc_out_tx, reader_config);
                 true
             }
             None => false, // No output transport configured.
@@ -89,10 +86,7 @@ fn main() -> Result<()> {
         }
     }
 
-    let _transport_handles = vec![
-        thread::spawn(move || udp_handler.run()),
-        thread::spawn(move || ros2_handler.run()),
-    ];
+    let _transport_handles = transport_manager.run();
 
     // Create frame processor and spawn processing threads
     let processor = FrameProcessor::new(config);
