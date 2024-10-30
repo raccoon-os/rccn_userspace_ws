@@ -1,10 +1,9 @@
 use crossbeam_channel::bounded;
 use std::{sync::Arc, thread};
-use rccn_usr::config::TxTransport;
 
 use config::Config;
 use frame_processor::FrameProcessor;
-use rccn_usr::transport::TransportManager;
+use rccn_usr::transport::{TransportManager, TxTransport};
 
 mod config;
 mod frame_processor;

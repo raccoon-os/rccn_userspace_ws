@@ -2,13 +2,11 @@ use std::{thread::{self, JoinHandle}, net::SocketAddr};
 use crossbeam_channel::{bounded, Receiver, Sender};
 use thiserror::Error;
 use crate::{
-    config::{VirtualChannel, TxTransport, RxTransport},
+    config::VirtualChannel,
     types::{VirtualChannelInMap, VirtualChannelOutMap}
 };
 use super::{
-    TransportHandler, TransportResult,
-    ros2::{Ros2TransportHandler, Ros2ReaderConfig, Ros2TransportError},
-    udp::UdpTransportHandler,
+    ros2::{Ros2ReaderConfig, Ros2TransportError, Ros2TransportHandler}, udp::UdpTransportHandler, RxTransport, TransportHandler, TransportResult, TxTransport
 };
 
 #[derive(Error, Debug)]

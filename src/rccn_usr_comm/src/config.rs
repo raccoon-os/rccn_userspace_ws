@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{path::Path, io};
 use thiserror::Error;
-use rccn_usr::config::{
-    TxTransport, RxTransport, VirtualChannel,
-};
+use rccn_usr::{config::VirtualChannel, transport::{RxTransport, TxTransport}};
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
