@@ -13,6 +13,8 @@ use spacepackets::{
     PacketId, PacketSequenceCtrl, PacketType, SequenceFlags, SpHeader,
 };
 
+mod app;
+
 fn handle_tc_bytes(bytes: Vec<u8>, tm_tx: Sender<Vec<u8>>) {
     match PusTcReader::new(&bytes) {
         Ok((tc, packet_size)) => {

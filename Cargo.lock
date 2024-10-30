@@ -1101,6 +1101,8 @@ dependencies = [
 name = "rccn_usr"
 version = "0.1.0"
 dependencies = [
+ "async-std",
+ "crossbeam-channel",
  "futures",
  "r2r",
 ]
@@ -1124,6 +1126,7 @@ name = "rccn_usr_example_app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "crossbeam-channel",
  "futures",
  "rccn_usr",
  "spacepackets",
@@ -1588,3 +1591,7 @@ dependencies = [
  "quote",
  "syn 2.0.85",
 ]
+
+[[patch.unused]]
+name = "rccn_usr_comm"
+version = "0.1.0"
