@@ -1,8 +1,8 @@
 use crossbeam_channel::bounded;
 use std::{net::SocketAddr, sync::Arc, thread};
-use rccn_usr::types::{VirtualChannelInMap, VirtualChannelOutMap};
+use rccn_usr::{config::InputTransport, types::{VirtualChannelInMap, VirtualChannelOutMap}};
 
-use config::{Config, InputTransport, OutputTransport};
+use config::{Config};
 use frame_processor::FrameProcessor;
 use rccn_usr::transport::{TransportManager, ros2::Ros2ReaderConfig};
 

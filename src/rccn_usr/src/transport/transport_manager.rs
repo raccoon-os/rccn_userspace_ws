@@ -88,8 +88,8 @@ impl TransportManager {
         Ok(())
     }
 
-    pub fn get_vc_maps(&self) -> (&VirtualChannelInMap, &VirtualChannelOutMap) {
-        (&self.vc_in_map, &self.vc_out_map)
+    pub fn get_vc_maps(&self) -> (VirtualChannelInMap, VirtualChannelOutMap) {
+        (self.vc_in_map.clone(), self.vc_out_map.clone())
     }
 
     pub fn add_udp_reader(&mut self, tx: Sender<Vec<u8>>, addr: std::net::SocketAddr) {

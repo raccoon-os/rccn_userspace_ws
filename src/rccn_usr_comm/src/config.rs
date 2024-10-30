@@ -41,7 +41,7 @@ pub struct Frames {
     pub out: FrameOutConfig
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
     pub frames: Frames,
     pub virtual_channels: Vec<VirtualChannel>
