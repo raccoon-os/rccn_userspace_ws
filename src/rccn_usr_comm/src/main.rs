@@ -1,7 +1,7 @@
 use anyhow::Result;
 use crossbeam_channel::bounded;
 use std::{net::SocketAddr, sync::Arc, thread};
-use types::{VirtualChannelInMap, VirtualChannelOutMap};
+use rccn_usr::types::{VirtualChannelInMap, VirtualChannelOutMap};
 
 use config::{Config, InputTransport, OutputTransport};
 use frame_processor::FrameProcessor;
@@ -9,7 +9,6 @@ use rccn_usr::transport::{ros2::{Ros2ReaderConfig, Ros2TransportHandler}, Transp
 
 mod config;
 mod frame_processor;
-mod types;
 
 fn main() -> Result<()> {
     let config = Arc::new(Config::from_file("etc/config.yaml")?);

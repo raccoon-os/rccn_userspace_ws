@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use anyhow::{Result, Context, bail};
 
-use crate::types::VcId;
+use rccn_usr::types::VcId;
 
 macro_rules! config_structs {
     ($($item:item)*) => {

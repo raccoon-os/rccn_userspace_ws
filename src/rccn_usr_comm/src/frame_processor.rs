@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use ccsds_protocols::tc_transfer_frame::TcTransferFrame;
 
 use crate::config::{Config, FrameKind};
-use crate::types::{VcId, VirtualChannelInMap, VirtualChannelOutMap};
+use rccn_usr::types::{VcId, VirtualChannelInMap, VirtualChannelOutMap};
 
 #[allow(dead_code)] // IO and SendError values are not read currently
 #[derive(Debug)]
