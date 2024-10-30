@@ -12,3 +12,4 @@ crossbeam-channel = "0.5"
 futures = "0.3.31"
 async-std = "1.13.0"
 rccn_usr = { version = "0.1.0", path = "../rccn_usr" }
+thiserror = "1.0.65"

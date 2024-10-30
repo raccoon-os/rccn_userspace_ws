@@ -4,12 +4,14 @@ use async_std::stream::StreamExt;
 use crossbeam_channel::{Receiver, Select, Sender};
 use futures::{executor::LocalPool, task::SpawnExt};
 use r2r::{rccn_usr_msgs::msg::RawBytes, Publisher, QosProfile};
+use thiserror::Error;
 
 use super::{TransportHandler, TransportReader, TransportWriter};
 
 #[allow(dead_code)] // Inner value is not read
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum Ros2TransportError {
+    #[error("R2R error {0}")]
     R2RError(r2r::Error),
 }
 

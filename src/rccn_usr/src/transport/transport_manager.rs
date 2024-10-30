@@ -19,7 +19,7 @@ pub struct TransportManager {
 }
 
 impl TransportManager {
-    pub fn new(ros2_node_prefix: String) -> anyhow::Result<Self> {
+    pub fn new(ros2_node_prefix: String) -> Result<Self, TransportManagerError> {
         Ok(Self {
             udp_handler: UdpTransportHandler::new(),
             ros2_handler: Ros2TransportHandler::new(ros2_node_prefix)?,
