@@ -1,13 +1,18 @@
-use std::{thread::{self, JoinHandle}, net::SocketAddr};
-use crossbeam_channel::{bounded, Receiver, Sender};
-use thiserror::Error;
+use super::{
+    ros2::{Ros2ReaderConfig, Ros2TransportError, Ros2TransportHandler},
+    udp::UdpTransportHandler,
+    RxTransport, TransportHandler, TransportResult, TxTransport,
+};
 use crate::{
     config::VirtualChannel,
-    types::{VirtualChannelTxMap, VirtualChannelRxMap}
+    types::{VirtualChannelRxMap, VirtualChannelTxMap},
 };
-use super::{
-    ros2::{Ros2ReaderConfig, Ros2TransportError, Ros2TransportHandler}, udp::UdpTransportHandler, RxTransport, TransportHandler, TransportResult, TxTransport
+use crossbeam_channel::{bounded, Receiver, Sender};
+use std::{
+    net::SocketAddr,
+    thread::{self, JoinHandle},
 };
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum TransportManagerError {
@@ -36,14 +41,19 @@ impl TransportManager {
         })
     }
 
-    pub fn add_virtual_channel(&mut self, vc: &VirtualChannel) -> Result<(), TransportManagerError> {
-        // Setup input direction
+    pub fn add_virtual_channel(
+        &mut self,
+        vc: &VirtualChannel,
+    ) -> Result<(), TransportManagerError> {
+        // Setup output direction
         if let Some(tx_transport) = &vc.tx_transport {
             let (vc_in_tx, vc_in_rx) = bounded(32);
-            
+
             match tx_transport {
                 TxTransport::Udp(addr) => {
-                    let addr: SocketAddr = addr.listen.parse()
+                    let addr: SocketAddr = addr
+                        .listen
+                        .parse()
                         .map_err(|e| TransportManagerError::AddrParse(e))?;
                     self.add_udp_writer(vc_in_rx, addr);
                 }
@@ -51,17 +61,19 @@ impl TransportManager {
                     self.add_ros2_writer(vc_in_rx, ros2_transport.topic_pub.clone());
                 }
             }
-            
+
             self.vc_tx_map.insert(vc.id, vc_in_tx);
         }
 
-        // Setup output direction
+        // Setup input direction
         if let Some(rx_transport) = &vc.rx_transport {
             let (vc_out_tx, vc_out_rx) = bounded(32);
-            
+
             match rx_transport {
                 RxTransport::Udp(addr) => {
-                    let addr: SocketAddr = addr.send.parse()
+                    let addr: SocketAddr = addr
+                        .send
+                        .parse()
                         .map_err(|e| TransportManagerError::AddrParse(e))?;
                     self.add_udp_reader(vc_out_tx, addr);
                 }
@@ -72,14 +84,14 @@ impl TransportManager {
                         Ros2ReaderConfig::ActionServer(action_srv.clone())
                     } else {
                         return Err(TransportManagerError::InvalidConfig(
-                            "ROS2 rx transport needs either topic_sub or action_srv".into()
+                            "ROS2 rx transport needs either topic_sub or action_srv".into(),
                         ));
                     };
 
                     self.add_ros2_reader(vc_out_tx, reader_config);
                 }
             }
-            
+
             self.vc_rx_map.insert(vc.id, vc_out_rx);
         }
 
@@ -106,10 +118,18 @@ impl TransportManager {
         self.ros2_handler.add_transport_writer(rx, topic);
     }
 
-    pub fn run(self) -> Vec<JoinHandle<TransportResult>> {
-        vec![
-            thread::spawn(move || self.udp_handler.run()),
-            thread::spawn(move || self.ros2_handler.run()),
-        ]
+    pub fn run(
+        self,
+    ) -> (
+        (VirtualChannelTxMap, VirtualChannelRxMap),
+        Vec<JoinHandle<TransportResult>>,
+    ) {
+        (
+            (self.vc_tx_map.clone(), self.vc_rx_map.clone()),
+            vec![
+                thread::spawn(move || self.udp_handler.run()),
+                thread::spawn(move || self.ros2_handler.run()),
+            ],
+        )
     }
 }

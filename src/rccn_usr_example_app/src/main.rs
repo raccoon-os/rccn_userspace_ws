@@ -10,10 +10,11 @@ use spacepackets::{
     },
     PacketId, PacketSequenceCtrl, PacketType, SequenceFlags, SpHeader,
 };
+use anyhow::Result;
 
 mod app;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<()> {
     let mut transport_manager = TransportManager::new("rccn_usr_example_app".into())?;
 
     // Configure virtual channel for TC/TM
@@ -31,16 +32,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     transport_manager.add_virtual_channel(&vc)?;
-    let (vc_in_map, vc_out_map) = transport_manager.get_vc_maps();
-    let transport_handles = transport_manager.run();
+    //let (vc_in_map, vc_out_map) = transport_manager.get_vc_maps();
+    let ((vc_tx_map, mut vc_rx_map), transport_handles) = transport_manager.run();
 
     // Get the sender for our virtual channel
-    let tm_sender = vc_out_map.get(&0).expect("VC 0 not found");
-
-
+    let tm_sender = vc_tx_map.get(&0).expect("VC 0 not found");
 
     // Process incoming TCs from the virtual channel
-    if let Some(tc_receiver) = vc_in_map.get(&0) {
+    if let Some(tc_receiver) = vc_rx_map.remove(&0) {
         loop {
             match tc_receiver.recv() {
                 Ok(bytes) => {
