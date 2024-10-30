@@ -1,13 +1,11 @@
-use rccn_usr::{r2r::ServiceRequest, time::TimestampHelper, types::VirtualChannelOutMap};
-use satrs::pus::verification::{VerificationReporter, VerificationReportingProvider};
-use spacepackets::{
+use rccn_usr::{time::TimestampHelper, types::VirtualChannelOutMap};
+use satrs::pus::verification::VerificationReporter;
+use spacepackets::
     ecss::{
         tc::PusTcReader,
-        tm::{PusTmCreator, PusTmSecondaryHeader},
-        PusError, WritablePusPacket,
-    },
-    PacketId, PacketSequenceCtrl, PacketType, SequenceFlags, SpHeader,
-};
+        PusError,
+    }
+;
 
 pub enum PusServiceError {
     PusError(PusError),

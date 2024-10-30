@@ -49,7 +49,7 @@ impl TransportManager {
                         .map_err(|e| TransportManagerError::AddrParse(e))?;
                     self.add_udp_writer(vc_in_rx, addr);
                 }
-                InputTransport::Ros2(ros2_transport) => {
+                TxTransport::Ros2(ros2_transport) => {
                     self.add_ros2_writer(vc_in_rx, ros2_transport.topic_pub.clone());
                 }
             }
@@ -67,14 +67,14 @@ impl TransportManager {
                         .map_err(|e| TransportManagerError::AddrParse(e))?;
                     self.add_udp_reader(vc_out_tx, addr);
                 }
-                OutputTransport::Ros2(ros2_transport) => {
+                RxTransport::Ros2(ros2_transport) => {
                     let reader_config = if let Some(topic) = &ros2_transport.topic_sub {
                         Ros2ReaderConfig::Subscription(topic.clone())
                     } else if let Some(action_srv) = &ros2_transport.action_srv {
                         Ros2ReaderConfig::ActionServer(action_srv.clone())
                     } else {
                         return Err(TransportManagerError::InvalidConfig(
-                            "ROS2 output transport needs either topic_sub or action_srv".into()
+                            "ROS2 rx transport needs either topic_sub or action_srv".into()
                         ));
                     };
 

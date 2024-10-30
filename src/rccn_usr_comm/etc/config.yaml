@@ -18,20 +18,20 @@ virtual_channels:
     name: bus_realtime
     splitter: space_packet
 
-    in_transport:
+    tx_transport:
       kind: ros2
       topic_pub: /vc/bus_realtime/rx
-    out_transport:
+    rx_transport:
       kind: ros2
       topic_sub: /vc/bus_realtime/tx
 
   - id: 1
     name: cfdp
 
-    in_transport:
+    tx_transport:
       kind: udp
       listen: 127.0.0.1:2000
-    out_transport:
+    rx_transport:
       kind: udp
       send: 127.0.0.1:3000
 

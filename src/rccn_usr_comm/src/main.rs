@@ -1,10 +1,10 @@
 use crossbeam_channel::bounded;
-use std::{net::SocketAddr, sync::Arc, thread};
-use rccn_usr::{config::TxTransport, types::{VirtualChannelInMap, VirtualChannelOutMap}};
+use std::{sync::Arc, thread};
+use rccn_usr::config::TxTransport;
 
-use config::{Config};
+use config::Config;
 use frame_processor::FrameProcessor;
-use rccn_usr::transport::{TransportManager, ros2::Ros2ReaderConfig};
+use rccn_usr::transport::TransportManager;
 
 mod config;
 mod frame_processor;
@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let addr = udp_tx_transport.listen.clone().parse()?;
             transport_manager.add_udp_reader(bytes_in_tx, addr);
         }
-        InputTransport::Ros2(_) => {
+        TxTransport::Ros2(_) => {
             todo!();
         }
     };
