@@ -1,8 +1,17 @@
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-use anyhow::{Result, Context, bail};
-
+use std::{path::Path, io};
+use thiserror::Error;
 use rccn_usr::types::VcId;
+
+#[derive(Error, Debug)]
+pub enum ConfigError {
+    #[error("IO error: {0}")]
+    Io(#[from] io::Error),
+    #[error("YAML parsing error: {0}")]
+    Yaml(#[from] serde_yaml::Error),
+    #[error("Config validation error: {0}")]
+    Validation(String),
+}
 
 macro_rules! config_structs {
     ($($item:item)*) => {
@@ -93,24 +102,20 @@ pub enum FrameKind {
 
 
 impl Config {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let contents = std::fs::read_to_string(&path)
-            .with_context(|| format!("Failed to read config file: {:?}", path.as_ref()))?;
-        
-        let config: Self = serde_yaml::from_str(&contents)
-            .context("Failed to parse YAML config")?;
-            
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, ConfigError> {
+        let contents = std::fs::read_to_string(&path)?;
+        let config: Self = serde_yaml::from_str(&contents)?;
         config.validate()?;
         Ok(config)
     }
 
-    fn validate(&self) -> Result<()> {
+    fn validate(&self) -> Result<(), ConfigError> {
         // Validate frame types
         if self.frames.r#in.frame_kind != FrameKind::Tc {
-            bail!("Input frame kind must be TC");
+            return Err(ConfigError::Validation("Input frame kind must be TC".into()));
         }
         if self.frames.out.frame_kind != FrameKind::Uslp {
-            bail!("Output frame kind must be USLP");
+            return Err(ConfigError::Validation("Output frame kind must be USLP".into()));
         }
 
         // Validate virtual channels: check IDs are unique check ROS2 output transports
@@ -118,12 +123,14 @@ impl Config {
             if self.virtual_channels.iter()
                 .filter(|other| other.id == vc.id)
                 .count() > 1 {
-                bail!("Duplicate virtual channel ID: {}", vc.id);
+                return Err(ConfigError::Validation(format!("Duplicate virtual channel ID: {}", vc.id)));
             }
 
             if let Some(OutputTransport::Ros2(t)) = &vc.out_transport {
                 if t.topic_sub.is_none() && t.action_srv.is_none() {
-                    bail!("Need `topic_sub` or `action_srv` for output transport of VC {}", vc.name);
+                    return Err(ConfigError::Validation(
+                        format!("Need `topic_sub` or `action_srv` for output transport of VC {}", vc.name)
+                    ));
                 }
             }
         }

@@ -1,10 +1,17 @@
 use std::thread::{self, JoinHandle};
 use crossbeam_channel::{Receiver, Sender};
+use thiserror::Error;
 use super::{
     TransportHandler, TransportResult,
-    ros2::{Ros2TransportHandler, Ros2ReaderConfig},
+    ros2::{Ros2TransportHandler, Ros2ReaderConfig, Ros2TransportError},
     udp::UdpTransportHandler,
 };
+
+#[derive(Error, Debug)]
+pub enum TransportManagerError {
+    #[error("ROS2 transport error: {0}")]
+    Ros2Error(#[from] Ros2TransportError),
+}
 
 pub struct TransportManager {
     udp_handler: UdpTransportHandler,

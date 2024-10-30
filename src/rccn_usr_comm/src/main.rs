@@ -1,4 +1,3 @@
-use anyhow::Result;
 use crossbeam_channel::bounded;
 use std::{net::SocketAddr, sync::Arc, thread};
 use rccn_usr::types::{VirtualChannelInMap, VirtualChannelOutMap};
@@ -10,7 +9,7 @@ use rccn_usr::transport::{TransportManager, ros2::Ros2ReaderConfig};
 mod config;
 mod frame_processor;
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Arc::new(Config::from_file("etc/config.yaml")?);
     println!("Loaded configuration: {:#?}", config);
 
