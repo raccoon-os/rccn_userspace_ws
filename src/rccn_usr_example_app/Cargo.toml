@@ -8,4 +8,5 @@ anyhow = "1.0.91"
 crossbeam-channel = "0.5.13"
 futures = "0.3.31"
 rccn_usr = { version = "0.1.0", path = "../rccn_usr" }
+satrs = "0.2.1"
 spacepackets = "0.12.0"

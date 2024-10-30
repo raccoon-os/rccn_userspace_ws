@@ -1,3 +1,5 @@
+use rccn_usr::{time::TimestampHelper, types::VirtualChannelOutMap};
+use satrs::pus::verification::VerificationReporter;
 use spacepackets::{
     ecss::{
         tc::PusTcReader,
@@ -13,8 +15,12 @@ pub enum PusServiceError {
 
 type ServiceResult<T> = Result<T, PusServiceError>;
 
+#[derive(Clone)]
 pub struct PusServiceCommon {
-    pub apid: u16
+    pub apid: u16,
+    pub verification_reporter: VerificationReporter,
+    pub virtual_channel_tx: VirtualChannelOutMap,
+    pub timestamp_helper: TimestampHelper
 }
 
 impl PusServiceCommon {
