@@ -40,9 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Get the virtual channel maps for frame processing
-    let (vc_in_map, vc_out_map) = transport_manager.get_vc_maps();
-
-    let _transport_handles = transport_manager.run();
+    let ((vc_tx_map, vc_rx_map), _transport_handles) = transport_manager.run();
 
     // Create frame processor and spawn processing threads
     let processor = FrameProcessor::new(config);
@@ -50,10 +48,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let p_out = processor.clone();
 
     let frame_process_handle =
-        thread::spawn(move || p_in.process_incoming_frames(bytes_in_rx, &vc_in_map));
+        thread::spawn(move || p_in.process_incoming_frames(bytes_in_rx, &vc_tx_map));
 
     let _frames_out_handle =
-        thread::spawn(move || p_out.process_frames_out(bytes_out_tx, &vc_out_map));
+        thread::spawn(move || p_out.process_frames_out(bytes_out_tx, &vc_rx_map));
 
     // Wait for threads to complete
     if let Err(e) = frame_process_handle.join() {
