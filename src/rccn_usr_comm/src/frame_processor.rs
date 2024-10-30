@@ -1,3 +1,4 @@
+use ccsds_protocols::traits::CCSDSFrames;
 use crossbeam_channel::{Receiver, Select, SendError, Sender};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -5,7 +6,9 @@ use std::sync::{Arc, Mutex};
 use ccsds_protocols::tc_transfer_frame::TcTransferFrame;
 
 use crate::config::{Config, FrameKind};
-use rccn_usr::types::{VcId, VirtualChannelTxMap, VirtualChannelRxMap};
+use rccn_usr::types::{VcId, VirtualChannelRxMap, VirtualChannelTxMap};
+
+use ccsds_protocols::uslp_transfer_paket::USLPTransferPaket;
 
 #[allow(dead_code)] // IO and SendError values are not read currently
 #[derive(Debug)]
@@ -83,13 +86,13 @@ impl FrameProcessor {
                 match self.distribute_vc_data(&frame, vc_in_map) {
                     Ok(()) => {
                         println!("Frame data sent to transport sucessfully.");
-                    },
+                    }
                     Err(FrameProcessingError::UnknownSpacecraft(id)) => {
                         println!("Received frame for unknown spacecraft ID {}", id);
-                    },
+                    }
                     Err(FrameProcessingError::UnknownVirtualChannel(id)) => {
                         println!("Received frame for unknown virtual channel ID {}", id);
-                    },
+                    }
                     Err(e) => {
                         println!("Unexpected error sending VC data: {:?}", e);
                     }
@@ -118,11 +121,9 @@ impl FrameProcessor {
         }
 
         match vc_in_map.get(&frame.get_vc_id()) {
-            None => {
-                Err(FrameProcessingError::UnknownVirtualChannel(
-                    frame.get_vc_id(),
-                ))
-            }
+            None => Err(FrameProcessingError::UnknownVirtualChannel(
+                frame.get_vc_id(),
+            )),
             Some(sender) => {
                 let data_vec = Vec::from(frame.get_data_field());
 
@@ -136,7 +137,7 @@ impl FrameProcessor {
         }
     }
 
-    pub fn process_frames_out(&self, _bytes_tx: Sender<Vec<u8>>, vc_out_map: &VirtualChannelRxMap) {
+    pub fn process_frames_out(&self, bytes_tx: Sender<Vec<u8>>, vc_out_map: &VirtualChannelRxMap) {
         let mut select = Select::new();
         let mut channels = Vec::new();
         for (id, receiver) in vc_out_map {
@@ -155,10 +156,45 @@ impl FrameProcessor {
                     println!("Received data on channel for VC ID {vc_id}: {data:?}");
 
                     // TODO: Put it into a frame and send it to bytes_tx
+                    self.frame_and_send_virtual_channel_data(bytes_tx.clone(), *vc_id, &data);
                 }
                 Err(_) => todo!(),
             }
-
         }
+    }
+
+    pub fn frame_and_send_virtual_channel_data(&self, bytes_tx: Sender<Vec<u8>>, vc_id: VcId, data: &[u8]) {
+        let mut frame: USLPTransferPaket<0, 512> = USLPTransferPaket::construct_final_frame(
+            1,
+            0xab,
+            true,
+            vc_id.into(),
+            0,
+            false,
+            data.len() as u16,
+            false,
+            false,
+            0,
+            false,
+            1,
+            0,
+            [],
+            0,
+            0,
+            0,
+            data,
+            0,
+            0,
+        )
+        .expect("USLP creation failed");
+
+        let mut buf = [0u8; 65536];
+        match frame.to_bytes(&mut buf) {
+            Ok(size) => {
+                bytes_tx.send(Vec::from(&buf[0..size])).unwrap();
+            }
+            Err(_) => todo!(),
+        }
+
     }
 }

@@ -3,7 +3,7 @@ use std::{sync::Arc, thread};
 
 use config::Config;
 use frame_processor::FrameProcessor;
-use rccn_usr::transport::{TransportManager, TxTransport};
+use rccn_usr::transport::{RxTransport::{Ros2, Udp}, TransportManager, TxTransport};
 
 mod config;
 mod frame_processor;
@@ -32,7 +32,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create channel for communication between the frames-out
     // task and the bytes-out transport
-    let (bytes_out_tx, _bytes_out_rx) = bounded(32);
+    let (bytes_out_tx, bytes_out_rx) = bounded(32);
+
+    // Create input transport for the frames-in link
+    match &config.frames.out.transport {
+        Udp(udp_rx_transport) => {
+            let addr = udp_rx_transport.send.clone().parse()?;
+            transport_manager.add_udp_writer(bytes_out_rx, addr);
+
+        }
+        Ros2(ros2_rx_transport) => todo!(),
+    };
 
     // Configure all virtual channels
     for vc in config.virtual_channels.iter() {
