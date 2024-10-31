@@ -1,5 +1,6 @@
 use ccsds_protocols::traits::CCSDSFrames;
 use crossbeam_channel::{Receiver, Select, SendError, Sender};
+use spacepackets::{PacketId, PacketSequenceCtrl, SpHeader};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -81,7 +82,7 @@ impl FrameProcessor {
             };
 
             if let Ok((frame, size)) = frame_result {
-                println!("We got a valid frame: {:?}", frame);
+                //println!("We got a valid frame: {:?}", frame);
 
                 match self.distribute_vc_data(&frame, vc_in_map) {
                     Ok(()) => {
@@ -153,7 +154,7 @@ impl FrameProcessor {
             let (vc_id, channel) = channels[index];
             match op.recv(channel) {
                 Ok(data) => {
-                    println!("Received data on channel for VC ID {vc_id}: {data:?}");
+                    //println!("Received data on channel for VC ID {vc_id}: {data:?}");
 
                     // TODO: Put it into a frame and send it to bytes_tx
                     self.frame_and_send_virtual_channel_data(bytes_tx.clone(), *vc_id, &data);
@@ -163,7 +164,33 @@ impl FrameProcessor {
         }
     }
 
-    pub fn frame_and_send_virtual_channel_data(&self, bytes_tx: Sender<Vec<u8>>, vc_id: VcId, data: &[u8]) {
+    pub fn frame_and_send_virtual_channel_data(
+        &self,
+        bytes_tx: Sender<Vec<u8>>,
+        vc_id: VcId,
+        data: &[u8],
+    ) {
+        let mut data_with_hdr = Vec::new();
+
+        let data = if vc_id == 1 {
+            if data.len() < 2 {
+                return;
+            }
+            let header = SpHeader::new(
+                PacketId::new(spacepackets::PacketType::Tm, false, 0x44),
+                PacketSequenceCtrl::new(spacepackets::SequenceFlags::Unsegmented, 0),
+                data.len() as u16,
+            );
+
+            println!("Wrapping data in SpacePacket");
+            data_with_hdr.extend_from_slice(&header.to_vec());
+            data_with_hdr.extend_from_slice(&data);
+
+            &data_with_hdr
+        } else {
+            data
+        };
+
         let mut frame: USLPTransferPaket<0, 512> = USLPTransferPaket::construct_final_frame(
             12,
             0xab,
@@ -171,7 +198,7 @@ impl FrameProcessor {
             vc_id.into(),
             0,
             false,
-            522,//data.len() as u16,
+            522, //data.len() as u16,
             false,
             false,
             0,
@@ -188,6 +215,7 @@ impl FrameProcessor {
         )
         .expect("USLP creation failed");
 
+
         let mut buf = [0u8; 65536];
         match frame.to_bytes(&mut buf) {
             Ok(size) => {
@@ -195,6 +223,5 @@ impl FrameProcessor {
             }
             Err(_) => todo!(),
         }
-
     }
 }

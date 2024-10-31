@@ -60,7 +60,7 @@ impl TransportHandler for UdpTransportHandler {
             let TransportWriter { rx, conf: addr } = &self.writers[index];
             match op.recv(rx) {
                 Ok(data) => {
-                    println!("Got data {data:?} for addr {:?}", addr);
+                    //println!("Got data {data:?} for addr {:?}", addr);
 
                     match socket.send_to(&data, addr) {
                         Ok(len) => {
@@ -73,6 +73,7 @@ impl TransportHandler for UdpTransportHandler {
                 }
                 Err(e) => {
                     println!("Got error receiving from RX channel ID {index}: {e:?}");
+                    break Ok(()); // TODO propagate error up
                 }
             }
         }
