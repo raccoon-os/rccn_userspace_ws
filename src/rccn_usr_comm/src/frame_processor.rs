@@ -165,19 +165,19 @@ impl FrameProcessor {
 
     pub fn frame_and_send_virtual_channel_data(&self, bytes_tx: Sender<Vec<u8>>, vc_id: VcId, data: &[u8]) {
         let mut frame: USLPTransferPaket<0, 512> = USLPTransferPaket::construct_final_frame(
-            1,
+            12,
             0xab,
             true,
             vc_id.into(),
             0,
             false,
-            data.len() as u16,
+            522,//data.len() as u16,
             false,
             false,
             0,
             false,
             1,
-            0,
+            1,
             [],
             0,
             0,
