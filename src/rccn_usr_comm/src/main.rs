@@ -3,7 +3,7 @@ use std::{sync::Arc, thread};
 
 use config::Config;
 use frame_processor::FrameProcessor;
-use rccn_usr::transport::{RxTransport::{Ros2, Udp}, TransportManager, TxTransport};
+use rccn_usr::transport::{RxTransport::{self, Ros2, Udp}, TransportManager, TxTransport};
 
 mod config;
 mod frame_processor;
@@ -21,13 +21,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create input transport for the frames-in link
     match &config.frames.r#in.transport {
-        TxTransport::Udp(udp_tx_transport) => {
-            let addr = udp_tx_transport.listen.clone().parse()?;
+        RxTransport::Udp(udp_rx_transport) => {
+            let addr = udp_rx_transport.listen.clone().parse()?;
             transport_manager.add_udp_reader(bytes_in_tx, addr);
+
         }
-        TxTransport::Ros2(_) => {
-            todo!();
-        }
+        RxTransport::Ros2(ros2_rx_transport) => todo!(),
     };
 
     // Create channel for communication between the frames-out
@@ -36,12 +35,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create input transport for the frames-in link
     match &config.frames.out.transport {
-        Udp(udp_rx_transport) => {
-            let addr = udp_rx_transport.send.clone().parse()?;
+        TxTransport::Udp(udp_tx_transport) => {
+            let addr = udp_tx_transport.send.clone().parse()?;
             transport_manager.add_udp_writer(bytes_out_rx, addr);
-
         }
-        Ros2(ros2_rx_transport) => todo!(),
+        TxTransport::Ros2(_) => {
+            todo!();
+        }
     };
 
     // Configure all virtual channels

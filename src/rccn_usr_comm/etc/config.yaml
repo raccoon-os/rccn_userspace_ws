@@ -28,10 +28,10 @@ virtual_channels:
   - id: 1
     name: cfdp
 
-    tx_transport:
+    rx_transport:
       kind: udp
       listen: 127.0.0.1:2000
-    rx_transport:
+    tx_transport:
       kind: udp
       send: 127.0.0.1:3000
 

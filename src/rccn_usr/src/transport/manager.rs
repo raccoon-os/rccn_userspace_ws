@@ -52,7 +52,7 @@ impl TransportManager {
             match tx_transport {
                 TxTransport::Udp(addr) => {
                     let addr: SocketAddr = addr
-                        .listen
+                        .send
                         .parse()
                         .map_err(|e| TransportManagerError::AddrParse(e))?;
                     self.add_udp_writer(vc_in_rx, addr);
@@ -72,7 +72,7 @@ impl TransportManager {
             match rx_transport {
                 RxTransport::Udp(addr) => {
                     let addr: SocketAddr = addr
-                        .send
+                        .listen
                         .parse()
                         .map_err(|e| TransportManagerError::AddrParse(e))?;
                     self.add_udp_reader(vc_out_tx, addr);

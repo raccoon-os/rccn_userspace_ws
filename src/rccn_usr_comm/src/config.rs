@@ -23,13 +23,13 @@ pub enum FrameKind {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FrameConfig {
     pub frame_kind: FrameKind,
-    pub transport: TxTransport
+    pub transport: RxTransport
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct FrameOutConfig {
     pub frame_kind: FrameKind,
-    pub transport: RxTransport
+    pub transport: TxTransport
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]

@@ -2,12 +2,12 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct UdpTxTransport {
-    pub listen: String
+    pub send: String
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct UdpRxTransport {
-    pub send: String
+    pub listen: String
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
