@@ -2,7 +2,7 @@ use anyhow::Result;
 use rccn_usr::{
     config::VirtualChannel,
     service::{AcceptanceError, PusService},
-    transport::{config::Ros2RxTransport, RxTransport, TransportManager, TxTransport},
+    transport::{config::Ros2RxTransport, ros2::new_shared_ros2_node, RxTransport, TransportManager, TxTransport},
 };
 use service::ExampleService;
 
@@ -10,7 +10,8 @@ mod command;
 mod service;
 
 fn main() -> Result<()> {
-    let mut transport_manager = TransportManager::new("rccn_usr_example_app".into())?;
+    let node = new_shared_ros2_node("rccn_usr_example_app", &"/")?;
+    let mut transport_manager = TransportManager::new_with_ros2_node(node.clone())?;
 
     // Configure virtual channel for TC/TM
     let vc = VirtualChannel {

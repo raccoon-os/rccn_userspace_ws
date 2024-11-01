@@ -26,7 +26,7 @@ pub enum Ros2ReaderConfig {
     ActionServer(String),
 }
 
-type SharedNode = Arc<Mutex<r2r::Node>>;
+pub type SharedNode = Arc<Mutex<r2r::Node>>;
 
 pub struct Ros2TransportHandler {
     node: SharedNode,
@@ -34,7 +34,7 @@ pub struct Ros2TransportHandler {
     readers: Vec<TransportReader<Ros2ReaderConfig>>,
 }
 
-pub fn create_shared_ros2_node(node_name: &str, namespace: &str) -> Result<SharedNode, r2r::Error> {
+pub fn new_shared_ros2_node(node_name: &str, namespace: &str) -> Result<SharedNode, r2r::Error> {
     let ctx = r2r::Context::create()?;
     Ok(Arc::new(Mutex::new(r2r::Node::create(
         ctx, &node_name, namespace,
@@ -52,7 +52,7 @@ impl Ros2TransportHandler {
         let node = match node {
             Some(n) => n,
             None => {
-                create_shared_ros2_node(node_name, &"/").map_err(Ros2TransportError::R2RError)?
+                new_shared_ros2_node(node_name, &"/").map_err(Ros2TransportError::R2RError)?
             }
         };
 

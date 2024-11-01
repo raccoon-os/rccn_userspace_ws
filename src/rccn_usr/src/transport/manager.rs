@@ -1,5 +1,5 @@
 use super::{
-    ros2::{Ros2ReaderConfig, Ros2TransportError, Ros2TransportHandler},
+    ros2::{Ros2ReaderConfig, Ros2TransportError, Ros2TransportHandler, SharedNode},
     udp::UdpTransportHandler,
     RxTransport, TransportHandler, TransportResult, TxTransport,
 };
@@ -8,6 +8,7 @@ use crate::{
     types::{VirtualChannelRxMap, VirtualChannelTxMap},
 };
 use crossbeam_channel::{bounded, Receiver, Sender};
+use futures::future::Shared;
 use std::{
     net::SocketAddr,
     thread::{self, JoinHandle},
@@ -32,10 +33,20 @@ pub struct TransportManager {
 }
 
 impl TransportManager {
+    // TODO: Refactor the `new` methods.
+    // TransportManager should be able to be used even if not(cfg(ros2))
     pub fn new(ros2_node_prefix: String) -> Result<Self, TransportManagerError> {
         Ok(Self {
             udp_handler: UdpTransportHandler::new(),
             ros2_handler: Ros2TransportHandler::new(&ros2_node_prefix)?,
+            vc_tx_map: VirtualChannelTxMap::new(),
+            vc_rx_map: VirtualChannelRxMap::new(),
+        })
+    }
+    pub fn new_with_ros2_node(node: SharedNode) -> Result<Self, TransportManagerError> {
+        Ok(Self {
+            udp_handler: UdpTransportHandler::new(),
+            ros2_handler: Ros2TransportHandler::new_with_node("", Some(node))?,
             vc_tx_map: VirtualChannelTxMap::new(),
             vc_rx_map: VirtualChannelRxMap::new(),
         })
