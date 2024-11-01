@@ -1,0 +1,3 @@
+[submodule "src/rcostool"]
+	path = src/rcostool
+	url = https://gitlab.com/raccoon-os/rcostool
