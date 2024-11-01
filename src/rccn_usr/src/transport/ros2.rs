@@ -6,7 +6,7 @@ use std::{
 
 use async_std::stream::StreamExt;
 use crossbeam_channel::{Receiver, Select, Sender};
-use futures::{executor::LocalPool, task::SpawnExt};
+use futures::{executor::LocalPool, task::SpawnExt, Stream};
 use r2r::{rccn_usr_msgs::msg::RawBytes, QosProfile};
 use thiserror::Error;
 
@@ -26,25 +26,37 @@ pub enum Ros2ReaderConfig {
     ActionServer(String),
 }
 
+type SharedNode = Arc<Mutex<r2r::Node>>;
+
 pub struct Ros2TransportHandler {
-    node: Arc<Mutex<r2r::Node>>,
+    node: SharedNode,
     publishers: Vec<TransportWriter<String>>,
     readers: Vec<TransportReader<Ros2ReaderConfig>>,
-    name_prefix: String,
 }
 
 impl Ros2TransportHandler {
     pub fn new(name_prefix: String) -> Result<Self, Ros2TransportError> {
-        let ctx = r2r::Context::create().map_err(Ros2TransportError::R2RError)?;
-        let node = Arc::new(Mutex::new(
-            r2r::Node::create(ctx, &name_prefix, "/").map_err(Ros2TransportError::R2RError)?,
-        ));
+        Self::new_with_node(name_prefix, None)
+    }
+    pub fn new_with_node(
+        name_prefix: String,
+        node: Option<SharedNode>,
+    ) -> Result<Self, Ros2TransportError> {
+        let node = match node {
+            Some(n) => n,
+            None => {
+                let ctx = r2r::Context::create().map_err(Ros2TransportError::R2RError)?;
+                Arc::new(Mutex::new(
+                    r2r::Node::create(ctx, &name_prefix, "/")
+                        .map_err(Ros2TransportError::R2RError)?,
+                ))
+            }
+        };
 
         Ok(Self {
             node,
             publishers: Vec::new(),
             readers: Vec::new(),
-            name_prefix,
         })
     }
 }
@@ -124,6 +136,27 @@ impl TransportHandler for Ros2TransportHandler {
     }
 }
 
+async fn handle_ros2_topic_subscription(
+    topic: String,
+    mut subscription: impl Stream<Item = RawBytes> + Unpin,
+    tx: Sender<Vec<u8>>,
+) {
+    println!("Subscribed to {topic}.");
+
+    loop {
+        match subscription.next().await {
+            Some(msg) => {
+                println!("Received message on topic {topic}.");
+                if let Err(e) = tx.send(msg.data) {
+                    println!("Error sending message to transmitter, exiting. {e:?}");
+                    break;
+                }
+            }
+            None => todo!(),
+        }
+    }
+}
+
 fn run_ros2_readers(node: Arc<Mutex<r2r::Node>>, readers: &Vec<TransportReader<Ros2ReaderConfig>>) {
     if readers.len() == 0 {
         return;
@@ -138,30 +171,15 @@ fn run_ros2_readers(node: Arc<Mutex<r2r::Node>>, readers: &Vec<TransportReader<R
                 let tx = tx.clone();
                 let topic = topic.clone();
 
-                let mut subscription = node
+                let subscription = node
                     .lock()
                     .unwrap()
                     .subscribe::<RawBytes>(&topic, QosProfile::default())
                     .unwrap();
 
-                let _ = spawner
-                    .spawn(async move {
-                        println!("Subscribed to {topic}.");
-                        loop {
-                            match subscription.next().await {
-                                Some(msg) => {
-                                    println!("Received message on topic {topic}.");
-                                    if let Err(e) = tx.send(msg.data) {
-                                        println!(
-                                            "Error sending message to transmitter, exiting. {e:?}"
-                                        );
-                                        break;
-                                    }
-                                }
-                                None => todo!(),
-                            }
-                        }
-                    })
+                // TODO keep track of whether subscriptions quit
+                spawner
+                    .spawn(handle_ros2_topic_subscription(topic, subscription, tx))
                     .unwrap();
             }
             Ros2ReaderConfig::ActionServer(_) => todo!(),
