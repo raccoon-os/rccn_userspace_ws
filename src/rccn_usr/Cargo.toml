@@ -15,3 +15,10 @@ serde = "1.0.214"
 
 [env]
 IDL_PACKAGE_FILTER = { value = "std_msgs;rccn_usr_msgs" }
+[package]
+name = "rccn_usr"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+paste = "1.0"
