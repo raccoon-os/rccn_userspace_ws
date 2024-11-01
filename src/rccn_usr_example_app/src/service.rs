@@ -33,15 +33,20 @@ impl PusService for ExampleService {
     fn handle_tc(
         &mut self,
         tc: &Self::CommandT,
-        _token: VerificationToken<TcStateAccepted>,
+        token: VerificationToken<TcStateAccepted>,
     ) -> ServiceResult<()> {
+        let base = self.get_service_base();
+
         match tc {
             ExampleServiceCommand::StartSdrRecording {
                 center_freq_hz,
                 bandwidth,
                 duration_seconds,
             } => {
+                let token = base.send_start_success(token).unwrap();
                 println!("SDR magic goes here {center_freq_hz} {bandwidth} {duration_seconds}");
+                
+                base.send_completion_success(token).unwrap();
             }
             ExampleServiceCommand::GenerateRandomFile { filename } => {
                 println!("Write random data to {filename}");
