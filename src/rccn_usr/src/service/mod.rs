@@ -1,7 +1,10 @@
 use core::time;
 use std::sync::{Arc, Mutex};
 
+use paste::paste;
+
 use crate::{
+    impl_verification_sender,
     time::TimestampHelper,
     types::{RccnEcssTmSender, VirtualChannelTxMap},
 };
@@ -80,50 +83,8 @@ impl PusServiceBase {
         }
     }
 
-    pub fn send_acceptance_failure(
-        &self,
-        token: VerificationToken<TcStateNone>,
-        failure_code: &dyn EcssEnumeration,
-        failure_data: &[u8],
-    ) -> Result<(), EcssTmtcError> {
-        let tm_sender = self.get_default_tm_sender();
-        let reporter = self.verification_reporter.clone();
-        let timestamp = self.timestamp_helper.stamp();
-
-        reporter.acceptance_failure(
-            &tm_sender,
-            token,
-            FailParams::new(timestamp, failure_code, failure_data),
-        )
-    }
-
-    pub fn send_start_success(
-        &self,
-        token: VerificationToken<TcStateAccepted>,
-    ) -> Result<VerificationToken<TcStateStarted>, EcssTmtcError> {
-        let tm_sender = self.get_default_tm_sender();
-        let reporter = self.verification_reporter.clone();
-        let timestamp = self.timestamp_helper.stamp();
-
-        reporter.start_success(&tm_sender, token, timestamp)
-    }
-
-    pub fn send_start_failure(
-        &self,
-        token: VerificationToken<TcStateAccepted>,
-        failure_code: &dyn EcssEnumeration,
-        failure_data: &[u8],
-    ) -> Result<(), EcssTmtcError> {
-        let tm_sender = self.get_default_tm_sender();
-        let reporter = self.verification_reporter.clone();
-        let timestamp = self.timestamp_helper.stamp();
-
-        reporter.start_failure(
-            &tm_sender,
-            token,
-            FailParams::new(timestamp, failure_code, failure_data),
-        )
-    }
+    impl_verification_sender!(acceptance, TcStateNone, TcStateAccepted);
+    impl_verification_sender!(start, TcStateAccepted, TcStateStarted);
 }
 
 #[derive(Debug, Clone)]
