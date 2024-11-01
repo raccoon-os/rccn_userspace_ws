@@ -1253,6 +1253,7 @@ dependencies = [
  "rccn_usr",
  "serde",
  "serde_yaml",
+ "spacepackets 0.12.0",
  "thiserror",
 ]
 
