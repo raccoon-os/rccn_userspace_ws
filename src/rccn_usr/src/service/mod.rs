@@ -1,12 +1,9 @@
+use core::time;
 use std::sync::{Arc, Mutex};
 
 use crate::{
     time::TimestampHelper,
     types::{RccnEcssTmSender, VirtualChannelTxMap},
-};
-use satrs::{
-    pus::verification::TcStateAccepted,
-    spacepackets::{ecss::{tc::PusTcReader, PusError, PusPacket}, CcsdsPacket},
 };
 use satrs::{
     pus::{
@@ -18,6 +15,16 @@ use satrs::{
     },
     spacepackets::ecss::{EcssEnumU8, EcssEnumeration},
     ComponentId,
+};
+use satrs::{
+    pus::{
+        verification::{TcStateAccepted, TcStateStarted},
+        EcssTcAndToken,
+    },
+    spacepackets::{
+        ecss::{tc::PusTcReader, PusError, PusPacket},
+        CcsdsPacket,
+    },
 };
 
 pub enum PusServiceError {
@@ -81,11 +88,40 @@ impl PusServiceBase {
     ) -> Result<(), EcssTmtcError> {
         let tm_sender = self.get_default_tm_sender();
         let reporter = self.verification_reporter.clone();
+        let timestamp = self.timestamp_helper.stamp();
 
         reporter.acceptance_failure(
             &tm_sender,
             token,
-            FailParams::new(self.timestamp_helper.stamp(), failure_code, failure_data),
+            FailParams::new(timestamp, failure_code, failure_data),
+        )
+    }
+
+    pub fn send_start_success(
+        &self,
+        token: VerificationToken<TcStateAccepted>,
+    ) -> Result<VerificationToken<TcStateStarted>, EcssTmtcError> {
+        let tm_sender = self.get_default_tm_sender();
+        let reporter = self.verification_reporter.clone();
+        let timestamp = self.timestamp_helper.stamp();
+
+        reporter.start_success(&tm_sender, token, timestamp)
+    }
+
+    pub fn send_start_failure(
+        &self,
+        token: VerificationToken<TcStateAccepted>,
+        failure_code: &dyn EcssEnumeration,
+        failure_data: &[u8],
+    ) -> Result<(), EcssTmtcError> {
+        let tm_sender = self.get_default_tm_sender();
+        let reporter = self.verification_reporter.clone();
+        let timestamp = self.timestamp_helper.stamp();
+
+        reporter.start_failure(
+            &tm_sender,
+            token,
+            FailParams::new(timestamp, failure_code, failure_data),
         )
     }
 }
@@ -108,7 +144,7 @@ pub enum AcceptanceError {
     CommandParseError(CommandParseError),
     ArgumentError,
     ServiceDisconnected,
-    SendVerificationTmFailed
+    SendVerificationTmFailed,
 }
 
 impl Into<EcssEnumU8> for AcceptanceError {
@@ -121,7 +157,7 @@ impl Into<EcssEnumU8> for AcceptanceError {
             AcceptanceError::CommandParseError(_) => 5,
             AcceptanceError::ArgumentError => 6,
             AcceptanceError::ServiceDisconnected => 7,
-            AcceptanceError::SendVerificationTmFailed => 8
+            AcceptanceError::SendVerificationTmFailed => 8,
         };
 
         EcssEnumU8::new(tag)
