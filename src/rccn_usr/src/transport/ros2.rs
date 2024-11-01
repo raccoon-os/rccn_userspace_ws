@@ -34,22 +34,25 @@ pub struct Ros2TransportHandler {
     readers: Vec<TransportReader<Ros2ReaderConfig>>,
 }
 
+pub fn create_shared_ros2_node(node_name: &str, namespace: &str) -> Result<SharedNode, r2r::Error> {
+    let ctx = r2r::Context::create()?;
+    Ok(Arc::new(Mutex::new(r2r::Node::create(
+        ctx, &node_name, namespace,
+    )?)))
+}
+
 impl Ros2TransportHandler {
-    pub fn new(name_prefix: String) -> Result<Self, Ros2TransportError> {
-        Self::new_with_node(name_prefix, None)
+    pub fn new(node_name: &str) -> Result<Self, Ros2TransportError> {
+        Self::new_with_node(node_name, None)
     }
     pub fn new_with_node(
-        name_prefix: String,
+        node_name: &str,
         node: Option<SharedNode>,
     ) -> Result<Self, Ros2TransportError> {
         let node = match node {
             Some(n) => n,
             None => {
-                let ctx = r2r::Context::create().map_err(Ros2TransportError::R2RError)?;
-                Arc::new(Mutex::new(
-                    r2r::Node::create(ctx, &name_prefix, "/")
-                        .map_err(Ros2TransportError::R2RError)?,
-                ))
+                create_shared_ros2_node(node_name, &"/").map_err(Ros2TransportError::R2RError)?
             }
         };
 

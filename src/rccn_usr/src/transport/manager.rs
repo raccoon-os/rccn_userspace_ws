@@ -35,7 +35,7 @@ impl TransportManager {
     pub fn new(ros2_node_prefix: String) -> Result<Self, TransportManagerError> {
         Ok(Self {
             udp_handler: UdpTransportHandler::new(),
-            ros2_handler: Ros2TransportHandler::new(ros2_node_prefix)?,
+            ros2_handler: Ros2TransportHandler::new(&ros2_node_prefix)?,
             vc_tx_map: VirtualChannelTxMap::new(),
             vc_rx_map: VirtualChannelRxMap::new(),
         })
