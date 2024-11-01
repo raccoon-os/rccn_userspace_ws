@@ -4,8 +4,8 @@ macro_rules! impl_verification_sender {
         paste::paste! {
             pub fn [<send_ $name _success>](
                 &self,
-                token: VerificationToken<$state_in>,
-            ) -> Result<VerificationToken<$state_out>, EcssTmtcError> {
+                token:  $state_in,
+            ) -> Result<$state_out, EcssTmtcError> {
                 let tm_sender = self.get_default_tm_sender();
                 let reporter = self.verification_reporter.clone();
                 let timestamp = self.timestamp_helper.stamp();
@@ -15,7 +15,7 @@ macro_rules! impl_verification_sender {
 
             pub fn [<send_ $name _failure>](
                 &self,
-                token: VerificationToken<$state_in>,
+                token: $state_in,
                 failure_code: &dyn EcssEnumeration,
                 failure_data: &[u8],
             ) -> Result<(), EcssTmtcError> {

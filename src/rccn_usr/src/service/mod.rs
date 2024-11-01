@@ -3,6 +3,8 @@ use std::sync::{Arc, Mutex};
 
 use paste::paste;
 
+mod macros;
+
 use crate::{
     impl_verification_sender,
     time::TimestampHelper,
@@ -83,8 +85,9 @@ impl PusServiceBase {
         }
     }
 
-    impl_verification_sender!(acceptance, TcStateNone, TcStateAccepted);
-    impl_verification_sender!(start, TcStateAccepted, TcStateStarted);
+    impl_verification_sender!(acceptance, VerificationToken<TcStateNone>, VerificationToken<TcStateAccepted>);
+    impl_verification_sender!(start, VerificationToken<TcStateAccepted>, VerificationToken<TcStateStarted>);
+    impl_verification_sender!(completion, VerificationToken<TcStateStarted>, ());
 }
 
 #[derive(Debug, Clone)]
