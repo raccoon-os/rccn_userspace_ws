@@ -68,7 +68,7 @@ impl PusService for ParameterManagementService {
         tc: &Self::CommandT,
         token: VerificationToken<TcStateAccepted>,
     ) -> AcceptanceResult {
-        let base = self.get_service_base();
+        let mut base = self.get_service_base();
         match tc {
             Command::ReportParameterValues {
                 number_of_parameters,
@@ -82,12 +82,16 @@ impl PusService for ParameterManagementService {
                     return Ok(CommandExecutionStatus::Failed);
                 }
 
-                handle_tc_with_tm!(
+                /*handle_tc_with_tm!(
                     base,
                     token,
                     self.report_parameter_values(*number_of_parameters, parameter_hashes),
                     1
-                )
+                )*/
+                handle_tc_with_tm!(base, token, || -> Result<Vec<u8>, ParameterError> {
+                    println!("{:?} {:?}", n, v);
+                    Ok(Vec::new())
+                })
             }
             Command::SetParameterValues {
                 number_of_parameters,
