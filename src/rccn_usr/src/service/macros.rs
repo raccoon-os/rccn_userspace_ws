@@ -49,28 +49,3 @@ macro_rules! handle_simple_tc {
         }
     };
 }
-
-#[macro_export]
-macro_rules! handle_tm_tc {
-    ($cmd_variant:path { $( $arg:ident ),* } => self.$func:ident, subservice: $subservice:expr) => {
-        $cmd_variant { $( $arg ),* } => {
-            let token = base.send_start_success(token).unwrap();
-            
-            match self.$func($( $arg ),*) {
-                Ok(tm_data) => {
-                    base.send_completion_success(token).unwrap();
-                    
-                    base.timestamp_helper.update_from_now();
-                    let tm = base.create_tm($subservice, &tm_data);
-                    base.send_tm(tm).expect("could not send TM response");
-                    
-                    Ok(CommandExecutionStatus::Completed)
-                },
-                Err(_) => {
-                    base.send_completion_failure(token, &EcssEnumU8::new(1), &[]).unwrap();
-                    Ok(CommandExecutionStatus::Failed)
-                }
-            }
-        }
-    };
-}
