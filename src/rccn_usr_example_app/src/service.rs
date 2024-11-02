@@ -1,14 +1,9 @@
 use rccn_usr::{
     service::{
-        AcceptanceResult, CommandExecutionStatus, PusService, PusServiceBase
+        AcceptanceResult, AcceptedTc, PusService, PusServiceBase,
     },
     types::VirtualChannelTxMap,
 };
-use satrs::{
-    pus::verification::TcStateAccepted,
-    pus::verification::VerificationToken,
-};
-
 use crate::command::ExampleServiceCommand;
 
 pub struct ExampleService {
@@ -30,29 +25,22 @@ impl PusService for ExampleService {
         self.service_base.clone()
     }
 
-    fn handle_tc(
-        &mut self,
-        tc: &Self::CommandT,
-        token: VerificationToken<TcStateAccepted>,
-    ) -> AcceptanceResult {
+    fn handle_tc(&mut self, tc: AcceptedTc, cmd: Self::CommandT) -> AcceptanceResult {
         let base = self.get_service_base();
 
-        match tc {
+        match cmd {
             ExampleServiceCommand::StartSdrRecording {
                 center_freq_hz,
                 bandwidth,
                 duration_seconds,
-            } => {
-                let token = base.send_start_success(token).unwrap();
+            } => tc.handle(|| {
                 println!("SDR magic goes here {center_freq_hz} {bandwidth} {duration_seconds}");
-                
-                base.send_completion_success(token).unwrap();
-            }
-            ExampleServiceCommand::GenerateRandomFile { filename } => {
+                true
+            }),
+            ExampleServiceCommand::GenerateRandomFile { filename } => tc.handle(|| {
                 println!("Write random data to {filename}");
-            }
+                true
+            })
         }
-
-        Ok(CommandExecutionStatus::Completed)
     }
 }

@@ -1,10 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use rccn_usr::service::{AcceptanceResult, CommandExecutionStatus, PusService, PusServiceBase};
-use satrs::{
-    pus::verification::{TcStateAccepted, VerificationToken},
-    spacepackets::ecss::EcssEnumU8,
-};
+use rccn_usr::service::{AcceptanceResult, AcceptedTc, CommandExecutionStatus, PusService, PusServiceBase, SubserviceTmData};
+use satrs::
+    spacepackets::ecss::EcssEnumU8
+;
 use xtce_rs::bitbuffer::BitWriter;
 
 use super::{command::Command, ParameterError, PusParameters};
@@ -25,7 +24,7 @@ impl ParameterManagementService {
         &mut self,
         n: u16,
         hashes: &Vec<u32>,
-    ) -> Result<Vec<u8>, ParameterError> {
+    ) -> Result<SubserviceTmData, ParameterError> {
         let mut data = [0u8; 512];
         let mut writer = BitWriter::wrap(&mut data);
         let mut bits_written: usize = 0;
@@ -49,9 +48,12 @@ impl ParameterManagementService {
         }
         let bytes_written = bits_written.div_ceil(8);
 
-        Ok(Vec::from(&data[0..bytes_written]))
+        Ok(SubserviceTmData {
+            subservice: 1,
+            data: Vec::from(&data[0..bytes_written]),
+        })
     }
-    fn set_parameter_values(&self, number_of_parameters: &u16, parameter_data: &Vec<u8>) -> bool {
+    fn set_parameter_values(&self, number_of_parameters: u16, parameter_data: &Vec<u8>) -> bool {
         false
     }
 }
@@ -65,41 +67,33 @@ impl PusService for ParameterManagementService {
 
     fn handle_tc(
         &mut self,
-        tc: &Self::CommandT,
-        token: VerificationToken<TcStateAccepted>,
+        mut tc: AcceptedTc,
+        cmd: Self::CommandT
     ) -> AcceptanceResult {
         let mut base = self.get_service_base();
-        match tc {
+        match cmd {
             Command::ReportParameterValues {
                 number_of_parameters,
                 parameter_hashes,
             } => {
                 // Make sure the command is properly constructed.
-                if *number_of_parameters != parameter_hashes.len() as u16 {
-                    base.send_start_failure(token, &EcssEnumU8::new(0), &[])
+                if number_of_parameters != parameter_hashes.len() as u16 {
+                    base.send_start_failure(tc.token, &EcssEnumU8::new(0), &[])
                         .unwrap();
 
                     return Ok(CommandExecutionStatus::Failed);
                 }
 
-                let mut accepted_cmd = AcceptedCommand::new(base, token);
-                accepted_cmd.handle_with_tm(|| {
-                    self.report_parameter_values(*number_of_parameters, parameter_hashes)
-                        .map(|data| SubserviceTmData {
-                            subservice: 1,
-                            data,
-                        })
+                tc.handle_with_tm(|| {
+                    self.report_parameter_values(number_of_parameters, &parameter_hashes)
                 })
             }
             Command::SetParameterValues {
                 number_of_parameters,
                 parameter_set_data,
-            } => {
-                let mut accepted_cmd = AcceptedCommand::new(base, token);
-                accepted_cmd.handle(|| {
-                    self.set_parameter_values(number_of_parameters, parameter_set_data)
-                })
-            }
+            } => tc.handle(|| {
+                self.set_parameter_values(number_of_parameters, &parameter_set_data)
+            })
         }
     }
 }
