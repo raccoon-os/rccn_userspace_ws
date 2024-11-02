@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use rccn_usr::{handle_simple_tc, handle_tc_with_tm, service::{AcceptanceResult, CommandExecutionStatus, PusService, PusServiceBase}};
+use rccn_usr::service::{AcceptanceResult, CommandExecutionStatus, PusService, PusServiceBase};
 use satrs::{
     pus::verification::{TcStateAccepted, VerificationToken},
     spacepackets::ecss::EcssEnumU8,
