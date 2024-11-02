@@ -82,31 +82,17 @@ impl PusService for ParameterManagementService {
                     return Ok(CommandExecutionStatus::Failed);
                 }
 
-                let token = base.send_start_success(token).unwrap();
-
-                match self.report_parameter_values(*number_of_parameters, parameter_hashes) {
-                    Err(e) => {
-                        self.base
-                            .send_completion_failure(token, &EcssEnumU8::new(1), &[])
-                            .unwrap();
-
-                        Ok(CommandExecutionStatus::Failed)
-                    },
-                    Ok(tm_data) => {
-                        base.send_completion_success(token).unwrap();
-
-                        self.base.timestamp_helper.update_from_now();
-                        let tm = self.base.create_tm(1, &tm_data);
-                        self.base.send_tm(tm).expect("could not send TM response");
-
-                        Ok(CommandExecutionStatus::Completed)
-                    }
-                }
+                handle_tc_with_tm!(
+                    self.report_parameter_values(*number_of_parameters, parameter_hashes),
+                    1
+                )
             }
             Command::SetParameterValues {
                 number_of_parameters,
                 parameter_set_data,
-            } => todo!()
+            } => handle_simple_tc!(
+                self.set_parameter_values(number_of_parameters, parameter_set_data)
+            )
         }
     }
 }
