@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use rccn_usr::service::{AcceptanceResult, CommandExecutionStatus, PusService, PusServiceBase};
+use rccn_usr::{handle_simple_tc, handle_tc_with_tm, service::{AcceptanceResult, CommandExecutionStatus, PusService, PusServiceBase}};
 use satrs::{
     pus::verification::{TcStateAccepted, VerificationToken},
     spacepackets::ecss::EcssEnumU8,
@@ -90,9 +90,9 @@ impl PusService for ParameterManagementService {
             Command::SetParameterValues {
                 number_of_parameters,
                 parameter_set_data,
-            } => handle_simple_tc!(
+            } => todo!() /*handle_simple_tc!(
                 self.set_parameter_values(number_of_parameters, parameter_set_data)
-            )
+            )*/
         }
     }
 }
