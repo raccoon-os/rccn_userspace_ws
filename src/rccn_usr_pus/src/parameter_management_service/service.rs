@@ -83,6 +83,8 @@ impl PusService for ParameterManagementService {
                 }
 
                 handle_tc_with_tm!(
+                    base,
+                    token,
                     self.report_parameter_values(*number_of_parameters, parameter_hashes),
                     1
                 )
