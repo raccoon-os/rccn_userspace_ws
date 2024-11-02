@@ -32,3 +32,18 @@ macro_rules! impl_verification_sender {
         }
     };
 }
+
+#[macro_export]
+macro_rules! handle_simple_tc {
+    ($cmd_variant:path { $( $arg:ident ),* } => self.$func:ident) => {
+        $cmd_variant { $( $arg ),* } => {
+            let token = base.send_start_success(token).unwrap();
+            let result = self.$func($( $arg ),*);
+            if result {
+                base.send_completion_success(token).unwrap();
+            } else {
+                base.send_completion_failure(token, &EcssEnumU8::new(0), &[]).unwrap();
+            }
+        },
+    };
+}

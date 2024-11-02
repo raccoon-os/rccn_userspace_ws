@@ -1,7 +1,4 @@
-use core::time;
 use std::sync::{Arc, Mutex};
-
-use paste::paste;
 
 mod macros;
 
@@ -11,32 +8,29 @@ use crate::{
     types::{RccnEcssTmSender, VirtualChannelTxMap},
 };
 use satrs::{
-    pus::{
-        verification::{
-            FailParams, TcStateNone, VerificationReporter, VerificationReporterCfg,
-            VerificationReportingProvider, VerificationToken,
-        },
-        EcssTmtcError,
-    },
-    spacepackets::ecss::{EcssEnumU8, EcssEnumeration},
-    ComponentId,
-};
-use satrs::{
-    pus::{
-        verification::{TcStateAccepted, TcStateStarted},
-        EcssTcAndToken,
-    },
+    pus::verification::{TcStateAccepted, TcStateStarted},
     spacepackets::{
         ecss::{tc::PusTcReader, PusError, PusPacket},
         CcsdsPacket,
     },
 };
-
-pub enum PusServiceError {
-    PusError(PusError),
-}
-
-pub type ServiceResult<T> = Result<T, PusServiceError>;
+use satrs::{
+    pus::{
+        verification::{
+            FailParams, TcStateNone, VerificationReporter, VerificationReporterCfg,
+            VerificationReportingProvider, VerificationToken,
+        },
+        EcssTmSender, EcssTmtcError,
+    },
+    spacepackets::{
+        ecss::{
+            tm::{PusTmCreator, PusTmSecondaryHeader},
+            EcssEnumU8, EcssEnumeration,
+        },
+        PacketId, PacketSequenceCtrl, PacketType, SequenceFlags, SpHeader,
+    },
+    ComponentId,
+};
 
 #[derive(Clone)]
 pub struct PusServiceBase {
@@ -85,9 +79,40 @@ impl PusServiceBase {
         }
     }
 
+    #[rustfmt::skip]
     impl_verification_sender!(acceptance, VerificationToken<TcStateNone>, VerificationToken<TcStateAccepted>);
+    #[rustfmt::skip]
     impl_verification_sender!(start, VerificationToken<TcStateAccepted>, VerificationToken<TcStateStarted>);
     impl_verification_sender!(completion, VerificationToken<TcStateStarted>, ());
+
+    pub fn create_tm<'ts, 'd>(
+        &'ts self,
+        subservice: u8,
+        src_data: &'d [u8],
+    ) -> PusTmCreator<'ts, 'd> {
+        // TODO: destination ID not used
+        PusTmCreator::new(
+            SpHeader::new(
+                PacketId::new(PacketType::Tm, true, self.apid),
+                PacketSequenceCtrl::new(SequenceFlags::Unsegmented, 0),
+                0,
+            ),
+            PusTmSecondaryHeader::new(
+                self.service,
+                subservice,
+                0,
+                0,
+                self.timestamp_helper.stamp(),
+            ),
+            src_data,
+            true,
+        )
+    }
+
+    pub fn send_tm<'ts, 'd>(&'ts self, tm: PusTmCreator<'ts, 'd>) -> Result<(), EcssTmtcError> {
+        self.get_default_tm_sender()
+            .send_tm(0, satrs::pus::PusTmVariant::Direct(tm))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -128,7 +153,17 @@ impl Into<EcssEnumU8> for AcceptanceError {
     }
 }
 
-type AcceptanceResult = Result<(), AcceptanceError>;
+/// Represents the possible outcomes of a successfully accepted command.
+pub enum CommandExecutionStatus {
+    /// The task requested by the command has been started, but has not finished executing.
+    Started,
+    /// The task has been started and finished successfully.
+    Completed,
+    /// The task was started, but failed immediately.
+    Failed
+}
+
+pub type AcceptanceResult = Result<CommandExecutionStatus, AcceptanceError>;
 
 pub trait ServiceCommand {
     fn from_pus_tc(tc: &PusTcReader) -> CommandParseResult<Self>
@@ -139,17 +174,17 @@ pub trait ServiceCommand {
 pub trait PusService {
     type CommandT: ServiceCommand;
 
-    fn get_service_base(&mut self) -> &mut PusServiceBase;
+    fn get_service_base(&mut self) -> PusServiceBase;
 
     fn handle_tc(
         &mut self,
         tc: &Self::CommandT,
         token: VerificationToken<TcStateAccepted>,
-    ) -> ServiceResult<()>;
+    ) -> AcceptanceResult;
 
     fn handle_tc_bytes(&mut self, bytes: &[u8]) -> AcceptanceResult {
         // ST[01] verification util
-        let base = self.get_service_base();
+        let mut base = self.get_service_base();
         let mut reporter = base.verification_reporter.clone();
 
         let pus_tc = match PusTcReader::new(&bytes) {
@@ -195,6 +230,7 @@ pub trait PusService {
         base.timestamp_helper.update_from_now();
 
         // Send TC accepted telemetry, get TC accepted token
+        /*
         let accepted_token = reporter
             .acceptance_success(
                 &base.get_default_tm_sender(),
@@ -205,9 +241,13 @@ pub trait PusService {
                 println!("Error sending acceptance success telemetry: {err}");
                 AcceptanceError::SendVerificationTmFailed
             })?;
+        */
 
-        let _ = self.handle_tc(&app_tc, accepted_token);
+        let accepted_token = base.send_acceptance_success(token).map_err(|err| {
+            println!("Error sending acceptance success telemetry: {err}");
+            AcceptanceError::SendVerificationTmFailed
+        })?;
 
-        Ok(())
+        self.handle_tc(&app_tc, accepted_token)
     }
 }

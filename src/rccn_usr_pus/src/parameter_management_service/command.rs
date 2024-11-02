@@ -39,7 +39,7 @@ impl ServiceCommand for Command {
                 })
             }
             2 => {
-                // GetParameterValues
+                // SetParameterValues
                 let n = bb.get_bits(16) as u16;
                 let data = &buffer[2..];
 

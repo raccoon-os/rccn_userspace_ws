@@ -3,7 +3,10 @@ use std::{sync::Arc, thread};
 
 use config::Config;
 use frame_processor::FrameProcessor;
-use rccn_usr::transport::{RxTransport::{self, Ros2, Udp}, TransportManager, TxTransport};
+use rccn_usr::transport::{
+    RxTransport::{self},
+    TransportManager, TxTransport,
+};
 
 mod config;
 mod frame_processor;
@@ -24,7 +27,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         RxTransport::Udp(udp_rx_transport) => {
             let addr = udp_rx_transport.listen.clone().parse()?;
             transport_manager.add_udp_reader(bytes_in_tx, addr);
-
         }
         RxTransport::Ros2(ros2_rx_transport) => todo!(),
     };

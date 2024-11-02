@@ -36,7 +36,7 @@ fn main() -> Result<()> {
     loop {
         match tc_receiver.recv() {
             Ok(bytes) => match example_service.handle_tc_bytes(&bytes) {
-                Ok(()) => {
+                Ok(_) => {
                     println!("Command handled succesfully.");
                 }
                 Err(AcceptanceError::UnknownApid(apid)) => {

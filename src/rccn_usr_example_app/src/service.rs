@@ -1,6 +1,6 @@
 use rccn_usr::{
     service::{
-        PusService, PusServiceBase, ServiceResult,
+        AcceptanceResult, CommandExecutionStatus, PusService, PusServiceBase
     },
     types::VirtualChannelTxMap,
 };
@@ -26,15 +26,15 @@ impl ExampleService {
 impl PusService for ExampleService {
     type CommandT = ExampleServiceCommand;
 
-    fn get_service_base(&mut self) -> &mut PusServiceBase {
-        &mut self.service_base
+    fn get_service_base(&mut self) -> PusServiceBase {
+        self.service_base.clone()
     }
 
     fn handle_tc(
         &mut self,
         tc: &Self::CommandT,
         token: VerificationToken<TcStateAccepted>,
-    ) -> ServiceResult<()> {
+    ) -> AcceptanceResult {
         let base = self.get_service_base();
 
         match tc {
@@ -53,6 +53,6 @@ impl PusService for ExampleService {
             }
         }
 
-        Ok(())
+        Ok(CommandExecutionStatus::Completed)
     }
 }

@@ -1,12 +1,12 @@
 pub mod command;
 pub mod service;
 
-use std::convert::TryInto;
 use xtce_rs::bitbuffer::{BitBuffer, BitWriter, WriteError};
 
+// TODO we cannot use thiserror:Error because xtce_rs::bitbuffer::WriteError does not implement Error
 #[derive(Debug, PartialEq)]
 pub enum ParameterError {
-    UnknownParameter,
+    UnknownParameter(u32),
     WriteError(WriteError),
 }
 

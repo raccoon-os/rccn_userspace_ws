@@ -7,4 +7,5 @@ edition = "2021"
 rccn_usr = { version = "0.1.0", path = "../rccn_usr" }
 satrs = "0.2.1"
 spacepackets = "0.12.0"
+thiserror = "1.0.66"
 xtce-rs = { git = "https://github.com/jdiez17/xtce-rs", branch = "bitbuffer_write_bits", version = "0.1.0" }

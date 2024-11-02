@@ -23,7 +23,11 @@ impl EcssTmSender for RccnEcssTmSender {
             PusTmVariant::Direct(creator) => creator
         }; 
 
-        { // New block to limit the lifetime of the mutex guard
+        // CCSDS seq count is updated by the comm application
+
+        // Update PUS service message counter
+        { 
+            // New block to limit the lifetime of the mutex guard
             let mut counter = self.msg_counter.lock().unwrap();
             tm_creator.set_msg_counter(*counter);
             *counter += 1;

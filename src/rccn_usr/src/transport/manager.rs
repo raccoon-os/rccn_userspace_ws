@@ -8,7 +8,6 @@ use crate::{
     types::{VirtualChannelRxMap, VirtualChannelTxMap},
 };
 use crossbeam_channel::{bounded, Receiver, Sender};
-use futures::future::Shared;
 use std::{
     net::SocketAddr,
     thread::{self, JoinHandle},
