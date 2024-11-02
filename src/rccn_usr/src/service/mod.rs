@@ -2,6 +2,89 @@ use std::sync::{Arc, Mutex};
 
 mod macros;
 
+pub struct SubserviceTmData {
+    pub subservice: u8,
+    pub data: Vec<u8>,
+}
+
+pub struct AcceptedCommand {
+    base: PusServiceBase,
+    accepted_token: Option<VerificationToken<TcStateAccepted>>,
+    started_token: Option<VerificationToken<TcStateStarted>>,
+}
+
+impl AcceptedCommand {
+    pub fn new(base: PusServiceBase, token: VerificationToken<TcStateAccepted>) -> Self {
+        Self {
+            base,
+            accepted_token: Some(token),
+            started_token: None,
+        }
+    }
+
+    pub fn handle<F>(&mut self, f: F) -> AcceptanceResult 
+    where
+        F: FnOnce() -> bool,
+    {
+        if let Some(token) = self.accepted_token.take() {
+            let started_token = self.base.send_start_success(token).unwrap();
+            self.started_token = Some(started_token);
+            
+            let result = f();
+            
+            if let Some(token) = self.started_token.take() {
+                if result {
+                    self.base.send_completion_success(token).unwrap();
+                    Ok(CommandExecutionStatus::Completed)
+                } else {
+                    self.base.send_completion_failure(token, &EcssEnumU8::new(1), &[]).unwrap();
+                    Ok(CommandExecutionStatus::Failed)
+                }
+            } else {
+                Ok(CommandExecutionStatus::Started)
+            }
+        } else {
+            Ok(CommandExecutionStatus::Failed)
+        }
+    }
+
+    pub fn handle_with_tm<T, E, F>(&mut self, f: F) -> AcceptanceResult 
+    where
+        F: FnOnce() -> Result<T, E>,
+        T: Into<SubserviceTmData>,
+    {
+        if let Some(token) = self.accepted_token.take() {
+            let started_token = self.base.send_start_success(token).unwrap();
+            self.started_token = Some(started_token);
+            
+            match f() {
+                Err(_) => {
+                    if let Some(token) = self.started_token.take() {
+                        self.base.send_completion_failure(token, &EcssEnumU8::new(1), &[]).unwrap();
+                    }
+                    Ok(CommandExecutionStatus::Failed)
+                },
+                Ok(tm_data) => {
+                    if let Some(token) = self.started_token.take() {
+                        self.base.send_completion_success(token).unwrap();
+                        
+                        let tm_data = tm_data.into();
+                        self.base.timestamp_helper.update_from_now();
+                        let tm = self.base.create_tm(tm_data.subservice, &tm_data.data);
+                        self.base.send_tm(tm).expect("could not send TM response");
+                        
+                        Ok(CommandExecutionStatus::Completed)
+                    } else {
+                        Ok(CommandExecutionStatus::Started)
+                    }
+                }
+            }
+        } else {
+            Ok(CommandExecutionStatus::Failed)
+        }
+    }
+}
+
 use crate::{
     impl_verification_sender,
     time::TimestampHelper,
