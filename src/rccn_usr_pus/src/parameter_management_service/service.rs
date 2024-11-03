@@ -1,3 +1,13 @@
+//! Implementation of ECSS PUS Service 20 - Parameter Management Service
+//! 
+//! This service provides the capability to:
+//! - Report parameter values (subservice 1)
+//! - Set parameter values (subservice 2)
+//! 
+//! The service operates on parameters that implement the `PusParameters` trait,
+//! which provides methods to serialize/deserialize parameter values to/from bytes.
+//! Each parameter is identified by a unique 32-bit hash.
+
 use std::sync::{Arc, Mutex};
 
 use rccn_usr::service::{
@@ -11,16 +21,57 @@ use super::{command::Command, ParameterError, PusParameters};
 
 type SharedPusParameters = Arc<Mutex<dyn PusParameters + Send>>;
 
+/// Implementation of ECSS PUS Service 20 - Parameter Management Service
+/// 
+/// This service allows reading and writing spacecraft parameters through two subservices:
+/// 
+/// - Subservice 1 (Report Parameter Values):
+///   Generates a report containing the current values of requested parameters
+///   
+/// - Subservice 2 (Set Parameter Values): 
+///   Updates parameter values based on provided data
+///
+/// # Example
+/// ```
+/// use rccn_usr::service::PusServiceBase;
+/// use std::sync::{Arc, Mutex};
+/// 
+/// #[derive(PusParameters)]
+/// struct MyParams {
+///     #[hash(0x1234)]
+///     temperature: f32,
+/// }
+/// 
+/// let params = Arc::new(Mutex::new(MyParams { temperature: 20.5 }));
+/// let service = ParameterManagementService::new(
+///     PusServiceBase::new(1, 20, 0, &vc_map),
+///     params
+/// );
+/// ```
 pub struct ParameterManagementService {
     base: PusServiceBase,
     parameters: SharedPusParameters,
 }
 
 impl ParameterManagementService {
+    /// Creates a new Parameter Management Service instance
+    ///
+    /// # Arguments
+    /// * `base` - Base PUS service configuration 
+    /// * `parameters` - Thread-safe reference to parameters that implement PusParameters
     pub fn new(base: PusServiceBase, parameters: SharedPusParameters) -> Self {
         Self { base, parameters }
     }
 
+    /// Generates a report containing the current values of requested parameters
+    ///
+    /// # Arguments
+    /// * `n` - Number of parameters to report
+    /// * `hashes` - List of parameter hashes to include in report
+    ///
+    /// # Returns
+    /// * `Ok(SubserviceTmData)` - TM packet containing parameter values
+    /// * `Err(ParameterError)` - If parameter not found or serialization fails
     fn report_parameter_values(
         &mut self,
         n: u16,
@@ -54,6 +105,15 @@ impl ParameterManagementService {
             data: Vec::from(&data[0..bytes_written]),
         })
     }
+    /// Updates parameter values from provided data
+    ///
+    /// # Arguments
+    /// * `n` - Number of parameters to update
+    /// * `parameter_set_data` - Raw bytes containing new parameter values
+    ///
+    /// # Returns
+    /// * `true` if all parameters were updated successfully
+    /// * `false` if any parameter update failed
     fn set_parameter_values(&self, n: u16, parameter_set_data: &Vec<u8>) -> bool {
         let mut bb = BitBuffer::wrap(&parameter_set_data);
         let mut params = self.parameters.lock().unwrap();
