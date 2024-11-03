@@ -72,7 +72,8 @@ pub fn derive_pus_parameters(input: TokenStream) -> TokenStream {
 
         let set_conversion = match field_type {
             Type::Path(type_path) => {
-                let type_name = type_path.path.get_ident().unwrap().to_string();
+                let type_ident = type_path.path.get_ident().unwrap();
+                let type_name = type_ident.to_string();
                 // Special handling for floating point types
                 if type_name == "f32" {
                     quote! {
@@ -83,19 +84,13 @@ pub fn derive_pus_parameters(input: TokenStream) -> TokenStream {
                     quote! {
                         self.#field_name = f64::from_be_bytes(bytes);
                     }
-                } else if type_name.len() >= 3 {
+                } else if type_name.len() == 3 {
                     // Handle integer types by parsing the bit size from type name
                     let bits: usize = type_name[1..].parse().unwrap_or(0);
                     if bits > 0 && bits <= 64 {
-                        if bits == 64 {
-                            quote! {
-                                self.#field_name = #type_name::from_be_bytes(bytes);
-                            }
-                        } else {
-                            quote! {
-                                let start = ((64 - #bits) as usize).div_ceil(8);
-                                self.#field_name = #type_name::from_be_bytes(bytes[start..].try_into().unwrap());
-                            }
+                        quote! {
+                            let start = ((64 - #bits) as usize).div_ceil(8);
+                            self.#field_name = #type_ident::from_be_bytes(bytes[start..].try_into().unwrap());
                         }
                     } else {
                         panic!("Unsupported field type: {}", type_name)
