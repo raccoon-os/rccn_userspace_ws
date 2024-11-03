@@ -24,11 +24,12 @@ fn main() -> Result<()> {
     };
     transport_manager.add_virtual_channel(&vc)?;
 
-    // Create our ExampleService
-    let mut example_service = ExampleService::new(42, transport_manager.get_vc_maps().0);
-
     // Start the transport manager
-    let ((_, mut vc_rx_map), transport_handles) = transport_manager.run();
+    let ((vc_tx_map, mut vc_rx_map), transport_handles) = transport_manager.run();
+
+    // Create our ExampleService
+    let mut example_service = ExampleService::new(42, &vc_tx_map);
+
 
     // Process incoming TCs from the virtual channel
     let tc_receiver = vc_rx_map.remove(&0).expect("VC 0 TC receiver not found");
