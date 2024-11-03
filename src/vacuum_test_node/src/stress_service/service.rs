@@ -6,11 +6,11 @@ use rccn_usr::{
 };
 use crate::stress_service::command::ExampleServiceCommand;
 
-pub struct ExampleService {
+pub struct StressTestService {
     service_base: PusServiceBase,
 }
 
-impl ExampleService {
+impl StressTestService {
     pub fn new(apid: u16, vc_map: &VirtualChannelTxMap) -> Self {
         Self {
             service_base: PusServiceBase::new(apid, 142, 12345u64, vc_map),
@@ -18,7 +18,7 @@ impl ExampleService {
     }
 }
 
-impl PusService for ExampleService {
+impl PusService for StressTestService {
     type CommandT = ExampleServiceCommand;
 
     fn get_service_base(&mut self) -> PusServiceBase {

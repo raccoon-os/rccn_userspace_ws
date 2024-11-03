@@ -12,7 +12,9 @@ mod config;
 mod frame_processor;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = Arc::new(Config::from_file("etc/config.yaml")?);
+    let config_path = Config::find_config_file()?;
+    println!("Using config file: {}", config_path.display());
+    let config = Arc::new(Config::from_file(config_path)?);
     println!("Loaded configuration: {:#?}", config);
 
     // Create transport manager and configure virtual channels

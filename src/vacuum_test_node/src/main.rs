@@ -4,6 +4,7 @@ use rccn_usr::{
     service::{AcceptanceError, PusService},
     transport::{config::Ros2RxTransport, ros2::new_shared_ros2_node, RxTransport, TransportManager, TxTransport},
 };
+use stress_service::service::StressTestService;
 
 mod stress_service;
 
@@ -25,6 +26,7 @@ fn main() -> Result<()> {
 
     //// Create our ExampleService
     //let mut example_service = ExampleService::new(42, transport_manager.get_vc_maps().0);
+    let mut stress_service = StressTestService::new(42, transport_manager.get_vc_maps().0);
 
     // Start the transport manager
     let ((_, mut vc_rx_map), transport_handles) = transport_manager.run();
@@ -33,7 +35,7 @@ fn main() -> Result<()> {
     let tc_receiver = vc_rx_map.remove(&0).expect("VC 0 TC receiver not found");
     loop {
         match tc_receiver.recv() {
-            Ok(bytes) => {} /*match example_service.handle_tc_bytes(&bytes) {
+            Ok(bytes) => match stress_service.handle_tc_bytes(&bytes) {
                 Ok(_) => {
                     println!("Command handled succesfully.");
                 }
@@ -43,7 +45,7 @@ fn main() -> Result<()> {
                 Err(e) => {
                     println!("Error handling command: {e:?}");
                 }
-            }*/,
+            },
             Err(e) => {
                 println!("TC RX channel closed, exiting. {e:?}");
                 break;
