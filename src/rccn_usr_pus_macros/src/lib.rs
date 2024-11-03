@@ -93,10 +93,10 @@ pub fn derive_pus_parameters(input: TokenStream) -> TokenStream {
                             self.#field_name = #type_ident::from_be_bytes(bytes[start..].try_into().unwrap());
                         }
                     } else {
-                        panic!("Unsupported field type: {}", type_name)
+                        panic!("Unsupported field `{}` type {}", field_name, type_name)
                     }
                 } else {
-                    panic!("Unsupported field type: {}", type_name)
+                    panic!("Unsupported field `{}` type {}", field_name, type_name)
                 }
             }
             _ => panic!("Unsupported field type"),
