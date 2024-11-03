@@ -4,7 +4,7 @@ use rccn_usr::{
     },
     types::VirtualChannelTxMap,
 };
-use crate::stress_service::command::StessServiceCommand;
+use crate::stress_service::command::StressServiceCommand;
 
 pub struct StressTestService {
     service_base: PusServiceBase,
@@ -19,7 +19,7 @@ impl StressTestService {
 }
 
 impl PusService for StressTestService {
-    type CommandT = StessServiceCommand;
+    type CommandT = StressServiceCommand;
 
     fn get_service_base(&mut self) -> PusServiceBase {
         self.service_base.clone()

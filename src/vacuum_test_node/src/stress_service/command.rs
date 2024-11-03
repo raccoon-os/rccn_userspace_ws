@@ -12,7 +12,7 @@ pub mod stress_command {
 }
 
 #[derive(Debug)]
-pub enum StessServiceCommand {
+pub enum StressServiceCommand {
     Cpu(stress_command::DurationArgs),
     Ram(stress_command::DurationArgs),
     Io(stress_command::DurationArgs),
@@ -21,7 +21,7 @@ pub enum StessServiceCommand {
     TcTest(stress_command::DurationArgs),
 }
 
-impl ServiceCommand for StessServiceCommand {
+impl ServiceCommand for StressServiceCommand {
     fn from_pus_tc(tc: &PusTcReader) -> CommandParseResult<Self> {
         let duration = stress_command::DurationArgs::binary_deserialize(
             tc.app_data(),
