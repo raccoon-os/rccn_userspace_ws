@@ -121,6 +121,14 @@ mod tests {
 
     use super::ParameterManagementService;
 
+    #[derive(PusParameters)]
+    struct TestParameters {
+        #[hash(0xABCDEF00)]
+        a: u16,
+        #[hash(0x00EFCDAB)]
+        b: f32,
+    }
+
     #[test]
     fn test_read_end_to_end() {
         let mut common = TestCommon::new(TestParameters {
@@ -211,14 +219,6 @@ mod tests {
         parameters: Arc<Mutex<TestParameters>>
     }
 
-    #[derive(PusParameters)]
-    struct TestParameters {
-        #[hash(0xABCDEF00)]
-        a: u16,
-
-        #[hash(0x00EFCDAB)]
-        b: f32,
-    }
 
 
     impl TestCommon {
