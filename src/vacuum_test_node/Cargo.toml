@@ -1,0 +1,11 @@
+[package]
+name = "vacuum_test_node"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.92"
+binary_serde = "1.0.24"
+rccn_usr = { version = "0.1.0", path = "../rccn_usr" }
+rccn_usr_pus = { version = "0.1.0", path = "../rccn_usr_pus" }
+satrs = "0.2.1"
