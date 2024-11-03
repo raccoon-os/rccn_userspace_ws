@@ -127,6 +127,8 @@ mod tests {
         a: u16,
         #[hash(0x00EFCDAB)]
         b: f32,
+        #[hash(0xF00BA400)]
+        c: i32,
     }
 
     #[test]
@@ -134,13 +136,15 @@ mod tests {
         let mut common = TestCommon::new(TestParameters {
             a: 0xc0ff,
             b: 1.337,
+            c: -42
         });
 
         let mut tc_data = [0u8; 128];
         let mut tc_buffer = BitWriter::wrap(&mut tc_data);
-        tc_buffer.write_bits(2, 16).unwrap();
+        tc_buffer.write_bits(3, 16).unwrap();
         tc_buffer.write_bits(0xABCDEF00, 32).unwrap();
         tc_buffer.write_bits(0x00EFCDAB, 32).unwrap();
+        tc_buffer.write_bits(0xF00BA400, 32).unwrap();
 
         let tc = create_pus_tc(1, 20, 1, &tc_data);
 
@@ -163,7 +167,7 @@ mod tests {
 
         // Check TM app data
         let mut reader = BitBuffer::wrap(&service_tm.source_data());
-        assert_eq!(reader.get_bits(16), 2); // number of parameters
+        assert_eq!(reader.get_bits(16), 3); // number of parameters
 
         // first parameter
         assert_eq!(reader.get_bits(32), 0xABCDEF00);
@@ -175,6 +179,13 @@ mod tests {
             reader.get_bits(32),
             src_buffer_to_u64(&(1.337_f32).to_be_bytes(), 32)
         );
+
+        // third parameter
+        assert_eq!(reader.get_bits(32), 0xF00BA400);
+        assert_eq!(
+            reader.get_bits(32) as i32,
+            -42i32
+        );
     }
 
     #[test]
@@ -182,15 +193,18 @@ mod tests {
         let mut common = TestCommon::new(TestParameters {
             a: 0xc0ff,
             b: 1.337,
+            c: -42
         });
 
         let mut tc_data = [0u8; 128];
         let mut tc_buffer = BitWriter::wrap(&mut tc_data);
-        tc_buffer.write_bits(2, 16).unwrap();
+        tc_buffer.write_bits(3, 16).unwrap();
         tc_buffer.write_bits(0xABCDEF00, 32).unwrap();
         tc_buffer.write_bits(0x0000_0000_0000_babe, 64).unwrap();
         tc_buffer.write_bits(0x00EFCDAB, 32).unwrap();
         tc_buffer.write_bytes(&(337.1_f64.to_be_bytes())).unwrap();
+        tc_buffer.write_bits(0xF00BA400, 32).unwrap();
+        tc_buffer.write_bytes(&(-99i64).to_be_bytes()).unwrap();
 
         let tc = create_pus_tc(1, 20, 2, &tc_data);
 
@@ -210,6 +224,7 @@ mod tests {
             let parameters = common.parameters.lock().unwrap();
             assert_eq!(parameters.a, 0xBABE);
             assert_eq!(parameters.b, 337.1_f32);
+            assert_eq!(parameters.c, -99);
         }
     }
 
