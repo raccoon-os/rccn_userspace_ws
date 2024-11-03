@@ -113,12 +113,13 @@ mod tests {
         service::{util::create_pus_tc, CommandExecutionStatus, PusService, PusServiceBase},
         types::{Receiver, VirtualChannelTxMap},
     };
+    use rccn_usr_pus_macros::PusParameters;
     use satrs::spacepackets::ecss::{tm::PusTmReader, PusPacket, WritablePusPacket};
     use xtce_rs::bitbuffer::{BitBuffer, BitWriter};
 
     use crate::parameter_management_service::{src_buffer_to_u64, ParameterError, PusParameters};
 
-    use super::{ParameterManagementService, SharedPusParameters};
+    use super::ParameterManagementService;
 
     #[test]
     fn test_read_end_to_end() {
@@ -210,6 +211,16 @@ mod tests {
         parameters: Arc<Mutex<TestParameters>>
     }
 
+    #[derive(PusParameters)]
+    struct TestParameters {
+        #[hash(0xABCDEF00)]
+        a: u16,
+
+        #[hash(0x00EFCDAB)]
+        b: f32,
+    }
+
+
     impl TestCommon {
         fn new(parameters: TestParameters) -> Self {
             let (tm_tx, tm_rx) = bounded(4);
@@ -234,56 +245,4 @@ mod tests {
         }
     }
 
-    struct TestParameters {
-        a: u16,
-        b: f32,
-    }
-
-    impl PusParameters for TestParameters {
-        fn get_parameter_as_be_bytes(
-            &self,
-            hash: u32,
-            writer: &mut BitWriter,
-        ) -> Result<usize, ParameterError> {
-            match hash {
-                0xABCDEF00 => {
-                    writer
-                        .write_bytes(&self.a.to_be_bytes())
-                        .map_err(ParameterError::WriteError)?;
-                    Ok(16)
-                }
-                0x00EFCDAB => {
-                    writer
-                        .write_bytes(&self.b.to_be_bytes())
-                        .map_err(ParameterError::WriteError)?;
-                    Ok(32)
-                }
-                _ => Err(ParameterError::UnknownParameter(hash)),
-            }
-        }
-
-        fn set_parameter_from_be_bytes(&mut self, hash: u32, buffer: &mut BitBuffer) -> bool {
-            // Parameter set commands always use 64 bit numbers
-            match hash {
-                0xABCDEF00 => {
-                    let val = buffer.get_bits(64).to_be_bytes();
-                    let start = ((64 - 16) as usize).div_ceil(8);
-                    self.a = u16::from_be_bytes(val[start..].try_into().unwrap());
-
-                    true
-                }
-                0x00EFCDAB => {
-                    let val = f64::from_be_bytes(buffer.get_bits(64).to_be_bytes());
-                    self.b = val as f32;
-
-                    true
-                }
-                _ => false,
-            }
-        }
-
-        fn get_parameter_size(&self, hash: u32) -> Option<usize> {
-            todo!() // Unused, we should get rid of this function
-        }
-    }
 }

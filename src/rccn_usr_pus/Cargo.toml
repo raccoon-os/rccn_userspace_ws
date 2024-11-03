@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 rccn_usr = { version = "0.1.0", path = "../rccn_usr" }
+rccn_usr_pus_macros = { version = "0.1.0", path = "../rccn_usr_pus_macros" }
 satrs = "0.2.1"
 spacepackets = "0.12.0"
 thiserror = "1.0.66"
