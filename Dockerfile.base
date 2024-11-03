@@ -55,7 +55,9 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --de
 # Install cargo tools
 ENV PATH="/home/$USERNAME/.cargo/bin:${PATH}"
 RUN cargo install --locked \
-    cargo-ament-build \
     cargo-audit \
     cargo-edit \
     cargo-watch
+RUN cargo install --locked \
+    --git https://github.com/ros2-rust/cargo-ament-build \
+    --tag v0.1.9 

@@ -4,3 +4,4 @@ target
 build/
 install/
 log/
+.cargo/config.toml # cargo-ament-build generated, we don't want it in git

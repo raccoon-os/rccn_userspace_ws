@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model
+   href="http://download.ros.org/schema/package_format3.xsd"
+   schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>vacuum_test_node</name>
+  <version>0.1.0</version>
+  <description>Vacuum test node for the RACCOON mission.</description>
+  <maintainer email="j.diezlopez@tu-berlin.de">José Manuel Díez</maintainer>
+  <license>GPLv3</license>
+
+  <build_depend>std_msgs</build_depend>
+  <build_depend>rccn_usr</build_depend>
+
+  <exec_depend>std_msgs</exec_depend>
+
+  <export>
+    <build_type>ament_cargo</build_type>
+  </export>
+</package>

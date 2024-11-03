@@ -14,3 +14,7 @@ async-std = "1.13.0"
 rccn_usr = { version = "0.1.0", path = "../rccn_usr" }
 thiserror = "1.0.65"
 spacepackets = "0.12.0"
+
+[package.metadata.ros]
+# install_to_lib doesn't seem to work on cargo-ament-build 0.1.8 or 0.1.9
+install_to_share = ["etc"]
