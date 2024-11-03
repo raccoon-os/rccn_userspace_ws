@@ -2,6 +2,28 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Fields, Meta, NestedMeta, Type};
 
+/// Derives the PusParameters trait implementation for a struct.
+///
+/// This derive macro automatically implements the PusParameters trait for structs containing
+/// fields that represent spacecraft parameters. Each field must be annotated with a `#[hash]`
+/// attribute specifying a unique 32-bit identifier.
+///
+/// # Supported Field Types
+/// - `f32`: 32-bit floating point
+/// - `u16`: 16-bit unsigned integer
+/// - `u32`: 32-bit unsigned integer  
+/// - `u64`: 64-bit unsigned integer
+///
+/// # Example
+/// ```
+/// #[derive(PusParameters)]
+/// struct MyParameters {
+///     #[hash(0xABCD0001)]
+///     temperature: f32,
+///     #[hash(0xABCD0002)] 
+///     voltage: u16,
+/// }
+/// ```
 #[proc_macro_derive(PusParameters, attributes(hash))]
 pub fn derive_pus_parameters(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
