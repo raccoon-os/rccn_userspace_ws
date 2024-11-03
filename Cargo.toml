@@ -1,8 +1,13 @@
 [workspace]
 resolver = "2"
 members = [ "src/rccn_usr",
-    "src/rccn_usr_comm"
-, "src/rccn_usr_example_app", "src/rccn_usr_gen", "src/rccn_usr_pus", "src/rccn_usr_pus_macros", "src/vacuum_test_node"]
+    "src/rccn_usr_comm", 
+    "src/rccn_usr_example_app", 
+    "src/rccn_usr_gen", 
+    "src/rccn_usr_pus", 
+    "src/rccn_usr_pus_macros", 
+    "src/vacuum_test_node"
+]
 
 [profile.release]
 lto = true
