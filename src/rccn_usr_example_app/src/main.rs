@@ -1,13 +1,12 @@
 use anyhow::Result;
+use example_service::service::ExampleService;
 use rccn_usr::{
     config::VirtualChannel,
     service::{AcceptanceError, PusService},
     transport::{config::Ros2RxTransport, ros2::new_shared_ros2_node, RxTransport, TransportManager, TxTransport},
 };
-use service::ExampleService;
 
-mod command;
-mod service;
+mod example_service;
 
 fn main() -> Result<()> {
     let node = new_shared_ros2_node("rccn_usr_example_app", &"/")?;

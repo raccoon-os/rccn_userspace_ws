@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.91"
+binary_serde = "1.0.24"
 crossbeam-channel = "0.5.13"
 futures = "0.3.31"
 rccn_usr = { version = "0.1.0", path = "../rccn_usr" }
