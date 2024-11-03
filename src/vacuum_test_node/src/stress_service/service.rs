@@ -32,16 +32,5 @@ impl PusService for StressTestService {
             println!("Stress service command {:?}", cmd);
             true
         })
-
-        /*
-        match cmd {
-            StessServiceCommand::Cpu(duration_args) => todo!(),
-            StessServiceCommand::Ram(duration_args) => todo!(),
-            StessServiceCommand::Io(duration_args) => todo!(),
-            StessServiceCommand::SdrRx(duration_args) => todo!(),
-            StessServiceCommand::SdrTx(duration_args) => todo!(),
-            StessServiceCommand::TcTest(duration_args) => todo!(),
-        }
-        */
     }
 }
