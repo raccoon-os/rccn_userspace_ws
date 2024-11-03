@@ -70,7 +70,8 @@ impl PusService for ParameterManagementService {
         mut tc: AcceptedTc,
         cmd: Self::CommandT
     ) -> AcceptanceResult {
-        let mut base = self.get_service_base();
+        let base = self.get_service_base();
+ 
         match cmd {
             Command::ReportParameterValues {
                 number_of_parameters,
@@ -97,35 +98,3 @@ impl PusService for ParameterManagementService {
         }
     }
 }
-
-/*
-fn handle_tc(
-    &mut self,
-    tc: &Self::CommandT,
-    token: VerificationToken<TcStateAccepted>,
-) -> ServiceResult<()> {
-    let base = self.get_service_base().clone();
-
-    match tc {
-        Command::ReportParameterValues { number_of_parameters, parameter_hashes } => {
-            let token = base.send_start_success(token).unwrap();
-            let result = self.report_parameter_values(number_of_parameters, parameter_hashes);
-            if result {
-                base.send_completion_success(token).unwrap();
-            } else {
-                base.send_completion_failure(token, &EcssEnumU8::new(0), &[]).unwrap();
-            }
-        },
-        Command::SetParameterValues { number_of_parameters, parameter_set_data } => {
-            let token = base.send_start_success(token).unwrap();
-            let result = self.set_parameter_values(number_of_parameters, parameter_set_data);
-            if result {
-                base.send_completion_success(token).unwrap();
-            } else {
-                base.send_completion_failure(token, &EcssEnumU8::new(0), &[]).unwrap();
-            }
-        }
-    }
-
-    Ok(())
-}*/
