@@ -10,9 +10,14 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields, Meta, NestedMeta, Type};
 ///
 /// # Supported Field Types
 /// - `f32`: 32-bit floating point
+/// - `u8`: 8-bit unsigned integer
 /// - `u16`: 16-bit unsigned integer
-/// - `u32`: 32-bit unsigned integer  
+/// - `u32`: 32-bit unsigned integer
 /// - `u64`: 64-bit unsigned integer
+/// - `i8`: 8-bit signed integer
+/// - `i16`: 16-bit signed integer
+/// - `i32`: 32-bit signed integer
+/// - `i64`: 64-bit signed integer
 ///
 /// # Example
 /// ```
@@ -66,27 +71,44 @@ pub fn derive_pus_parameters(input: TokenStream) -> TokenStream {
         };
 
         let set_conversion = match field_type {
-            Type::Path(type_path) if type_path.path.is_ident("f32") => {
-                quote! {
-                    let val = f64::from_be_bytes(bytes);
-                    self.#field_name = val as f32;
-                }
-            }
-            Type::Path(type_path) if type_path.path.is_ident("u16") => {
-                quote! {
-                    let start = ((64 - 16) as usize).div_ceil(8);
-                    self.#field_name = u16::from_be_bytes(bytes[start..].try_into().unwrap());
-                }
-            }
-            Type::Path(type_path) if type_path.path.is_ident("u32") => {
-                quote! {
-                    let start = ((64 - 32) as usize).div_ceil(8);
-                    self.#field_name = u32::from_be_bytes(bytes[start..].try_into().unwrap());
-                }
-            }
-            Type::Path(type_path) if type_path.path.is_ident("u64") => {
-                quote! {
-                    self.#field_name = u64::from_be_bytes(bytes);
+            Type::Path(type_path) => {
+                let type_name = type_path.path.get_ident().unwrap().to_string();
+                match type_name.as_str() {
+                    "f32" => quote! {
+                        let val = f64::from_be_bytes(bytes);
+                        self.#field_name = val as f32;
+                    },
+                    "u8" => quote! {
+                        let start = ((64 - 8) as usize).div_ceil(8);
+                        self.#field_name = u8::from_be_bytes(bytes[start..].try_into().unwrap());
+                    },
+                    "u16" => quote! {
+                        let start = ((64 - 16) as usize).div_ceil(8);
+                        self.#field_name = u16::from_be_bytes(bytes[start..].try_into().unwrap());
+                    },
+                    "u32" => quote! {
+                        let start = ((64 - 32) as usize).div_ceil(8);
+                        self.#field_name = u32::from_be_bytes(bytes[start..].try_into().unwrap());
+                    },
+                    "u64" => quote! {
+                        self.#field_name = u64::from_be_bytes(bytes);
+                    },
+                    "i8" => quote! {
+                        let start = ((64 - 8) as usize).div_ceil(8);
+                        self.#field_name = i8::from_be_bytes(bytes[start..].try_into().unwrap());
+                    },
+                    "i16" => quote! {
+                        let start = ((64 - 16) as usize).div_ceil(8);
+                        self.#field_name = i16::from_be_bytes(bytes[start..].try_into().unwrap());
+                    },
+                    "i32" => quote! {
+                        let start = ((64 - 32) as usize).div_ceil(8);
+                        self.#field_name = i32::from_be_bytes(bytes[start..].try_into().unwrap());
+                    },
+                    "i64" => quote! {
+                        self.#field_name = i64::from_be_bytes(bytes);
+                    },
+                    _ => panic!("Unsupported field type: {}", type_name),
                 }
             }
             _ => panic!("Unsupported field type"),
