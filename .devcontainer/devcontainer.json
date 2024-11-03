@@ -48,7 +48,7 @@
     "workspaceMount": "source=${localWorkspaceFolder},target=/home/rosdev/ros2_ws,type=bind",
     "mounts": [],
     "runArgs": [
-        "--net=host",
+        "--net=host"
         /*"--userns=keep-id"*/
-    ],
+    ]
 }
