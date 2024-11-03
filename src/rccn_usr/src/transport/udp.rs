@@ -55,7 +55,7 @@ impl TransportHandler for UdpTransportHandler {
             let op = select.select();
             let index = op.index();
 
-            println!("RX channel {index} became available.");
+            log::debug!("RX channel {index} became available.");
 
             let TransportWriter { rx, conf: addr } = &self.writers[index];
             match op.recv(rx) {
@@ -64,15 +64,15 @@ impl TransportHandler for UdpTransportHandler {
 
                     match socket.send_to(&data, addr) {
                         Ok(len) => {
-                            println!("Sent {len} bytes to {:?}", addr);
+                            log::debug!("Sent {len} bytes to {:?}", addr);
                         }
                         Err(e) => {
-                            println!("Error sending bytes to {:?}: {e:?}", addr);
+                            log::error!("Error sending bytes to {:?}: {e:?}", addr);
                         }
                     }
                 }
                 Err(e) => {
-                    println!("Got error receiving from RX channel ID {index}: {e:?}");
+                    log::error!("Got error receiving from RX channel ID {index}: {e:?}");
                     break Ok(()); // TODO propagate error up
                 }
             }
@@ -96,7 +96,7 @@ fn run_udp_transport_readers(readers: Vec<TransportReader<SocketAddr>>) {
             .spawn(async move {
                 let mut buf = [0u8; TRANSPORT_BUFFER_SIZE];
                 let socket = async_std::net::UdpSocket::bind(bind_addr).await.unwrap();
-                println!("Listening on {bind_addr:?}.");
+                log::info!("Listening on {bind_addr:?}.");
 
                 loop {
                     match socket.recv_from(&mut buf).await {
@@ -104,12 +104,12 @@ fn run_udp_transport_readers(readers: Vec<TransportReader<SocketAddr>>) {
                             let data_vec = Vec::from(&buf[..size]);
 
                             if let Err(e) = tx.send(data_vec) {
-                                println!("Error sending data to channel: {:?}", e);
+                                log::error!("Error sending data to channel: {:?}", e);
                                 break;
                             } 
                         }
                         Err(e) => {
-                            println!("Error receiving from socket: {:?}", e);
+                            log::error!("Error receiving from socket: {:?}", e);
                             break;
                         }
                     }

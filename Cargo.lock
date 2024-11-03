@@ -1405,6 +1405,7 @@ dependencies = [
  "async-std",
  "crossbeam-channel",
  "futures",
+ "log",
  "paste",
  "r2r",
  "satrs",

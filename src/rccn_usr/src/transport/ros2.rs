@@ -120,16 +120,16 @@ impl TransportHandler for Ros2TransportHandler {
             let publisher = &publishers[index];
             match op.recv(rx) {
                 Ok(data) => {
-                    println!("Got data on channel {}, publishing to topic.", index);
+                    log::debug!("Got data on channel {}, publishing to topic.", index);
 
                     let mut msg = RawBytes::default();
                     msg.data = data;
                     match publisher.publish(&msg) {
                         Ok(()) => {
-                            println!("Published successfully.")
+                            log::debug!("Published successfully.")
                         }
                         Err(e) => {
-                            println!("Error publishing data to topic: {:?}", e);
+                            log::error!("Error publishing data to topic: {:?}", e);
                         }
                     }
                 }
@@ -144,14 +144,14 @@ async fn handle_ros2_topic_subscription(
     mut subscription: impl Stream<Item = RawBytes> + Unpin,
     tx: Sender<Vec<u8>>,
 ) {
-    println!("Subscribed to {topic}.");
+    log::info!("Subscribed to {topic}.");
 
     loop {
         match subscription.next().await {
             Some(msg) => {
-                println!("Received message on topic {topic}.");
+                log::debug!("Received message on topic {topic}.");
                 if let Err(e) = tx.send(msg.data) {
-                    println!("Error sending message to transmitter, exiting. {e:?}");
+                    log::error!("Error sending message to transmitter, exiting. {e:?}");
                     break;
                 }
             }
