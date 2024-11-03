@@ -21,7 +21,7 @@ use satrs::spacepackets::ecss::EcssEnumU8;
 use xtce_rs::bitbuffer::{BitBuffer, BitWriter};
 
 use super::{
-    command::{self, report_parameter_values, set_parameter_values, Command},
+    command::{report_parameter_values, set_parameter_values, Command},
     ParameterError, PusParameters,
 };
 
@@ -191,7 +191,7 @@ mod tests {
 
     use crossbeam::channel::bounded;
     use rccn_usr::{
-        service::{util::create_pus_tc, CommandExecutionStatus, PusService, PusServiceBase},
+        service::{util::create_pus_tc, CommandExecutionStatus, PusService},
         types::{Receiver, VirtualChannelTxMap},
     };
     use rccn_usr_pus_macros::PusParameters;

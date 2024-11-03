@@ -2,10 +2,7 @@ use anyhow::Result;
 use rccn_usr::{
     config::VirtualChannel,
     service::{AcceptanceError, PusService},
-    transport::{
-        config::Ros2RxTransport, ros2::new_shared_ros2_node, RxTransport, TransportManager,
-        TxTransport,
-    },
+    transport::{ros2::new_shared_ros2_node, TransportManager},
 };
 use stress_service::service::StressTestService;
 

@@ -19,7 +19,7 @@ impl VirtualChannel {
         let rx_topic = format!("/vc/{name}/rx");
 
         Self {
-            id: 0,
+            id: id,
             name: name.into(),
             splitter: None,
             tx_transport: Some(TxTransport::Ros2(tx_topic.as_str().into())),

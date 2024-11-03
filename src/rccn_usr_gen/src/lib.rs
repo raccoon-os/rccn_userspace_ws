@@ -22,13 +22,12 @@ mod tests {
     #[test]
     fn test_gen_parameters() {
         let mut mdb = gen_parameters();
-        let container = mdb.search_container("/PUS/pus-tm").unwrap();
         let name_db = &mdb.name_db().clone();
 
         let qualified_name = QualifiedName::from_str(name_db, "/parameters-dt").unwrap();
         let sys = mdb.get_space_system(&qualified_name).unwrap();
 
-        for (name, idx) in sys.parameters.iter() {
+        for (_name, idx) in sys.parameters.iter() {
             let param = mdb.get_parameter(*idx);
             let name = mdb.name2str(param.name());
             println!("Param {:?}", name);

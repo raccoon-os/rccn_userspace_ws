@@ -11,6 +11,7 @@ pub mod stress_command {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum StressServiceCommand {
     Cpu(stress_command::DurationArgs),

@@ -26,7 +26,7 @@ impl PusService for StressTestService {
     }
 
     fn handle_tc(&mut self, tc: AcceptedTc, cmd: Self::CommandT) -> AcceptanceResult {
-        let base = self.get_service_base();
+        let _base = self.get_service_base();
 
         tc.handle(|| {
             println!("Stress service command {:?}", cmd);

@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let addr = udp_rx_transport.listen.clone().parse()?;
             transport_manager.add_udp_reader(bytes_in_tx, addr);
         }
-        RxTransport::Ros2(ros2_rx_transport) => todo!(),
+        RxTransport::Ros2(_ros2_rx_transport) => todo!(),
     };
 
     // Create channel for communication between the frames-out
