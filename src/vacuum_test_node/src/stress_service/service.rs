@@ -4,7 +4,7 @@ use rccn_usr::{
     },
     types::VirtualChannelTxMap,
 };
-use crate::stress_service::command::ExampleServiceCommand;
+use crate::stress_service::command::StessServiceCommand;
 
 pub struct StressTestService {
     service_base: PusServiceBase,
@@ -19,7 +19,7 @@ impl StressTestService {
 }
 
 impl PusService for StressTestService {
-    type CommandT = ExampleServiceCommand;
+    type CommandT = StessServiceCommand;
 
     fn get_service_base(&mut self) -> PusServiceBase {
         self.service_base.clone()
@@ -28,19 +28,20 @@ impl PusService for StressTestService {
     fn handle_tc(&mut self, tc: AcceptedTc, cmd: Self::CommandT) -> AcceptanceResult {
         let base = self.get_service_base();
 
+        tc.handle(|| {
+            println!("Stress service command {:?}", cmd);
+            true
+        })
+
+        /*
         match cmd {
-            ExampleServiceCommand::StartSdrRecording {
-                center_freq_hz,
-                bandwidth,
-                duration_seconds,
-            } => tc.handle(|| {
-                println!("SDR magic goes here {center_freq_hz} {bandwidth} {duration_seconds}");
-                true
-            }),
-            ExampleServiceCommand::GenerateRandomFile { filename } => tc.handle(|| {
-                println!("Write random data to {filename}");
-                true
-            })
+            StessServiceCommand::Cpu(duration_args) => todo!(),
+            StessServiceCommand::Ram(duration_args) => todo!(),
+            StessServiceCommand::Io(duration_args) => todo!(),
+            StessServiceCommand::SdrRx(duration_args) => todo!(),
+            StessServiceCommand::SdrTx(duration_args) => todo!(),
+            StessServiceCommand::TcTest(duration_args) => todo!(),
         }
+        */
     }
 }
