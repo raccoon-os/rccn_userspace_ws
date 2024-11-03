@@ -90,6 +90,9 @@ impl TransportHandler for Ros2TransportHandler {
                 .lock()
                 .unwrap()
                 .spin_once(Duration::from_millis(100));
+
+            // Allow other threads to grab the node mutex
+            thread::sleep(Duration::from_millis(10));
         });
 
         if self.publishers.len() == 0 {
@@ -120,16 +123,16 @@ impl TransportHandler for Ros2TransportHandler {
             let publisher = &publishers[index];
             match op.recv(rx) {
                 Ok(data) => {
-                    log::debug!("Got data on channel {}, publishing to topic.", index);
+                    println!("Got data on channel {}, publishing to topic.", index);
 
                     let mut msg = RawBytes::default();
                     msg.data = data;
                     match publisher.publish(&msg) {
                         Ok(()) => {
-                            log::debug!("Published successfully.")
+                            println!("Published successfully.")
                         }
                         Err(e) => {
-                            log::error!("Error publishing data to topic: {:?}", e);
+                            println!("Error publishing data to topic: {:?}", e);
                         }
                     }
                 }
@@ -144,14 +147,14 @@ async fn handle_ros2_topic_subscription(
     mut subscription: impl Stream<Item = RawBytes> + Unpin,
     tx: Sender<Vec<u8>>,
 ) {
-    log::info!("Subscribed to {topic}.");
+    println!("Subscribed to {topic}.");
 
     loop {
         match subscription.next().await {
             Some(msg) => {
-                log::debug!("Received message on topic {topic}.");
+                println!("Received message on topic {topic}.");
                 if let Err(e) = tx.send(msg.data) {
-                    log::error!("Error sending message to transmitter, exiting. {e:?}");
+                    println!("Error sending message to transmitter, exiting. {e:?}");
                     break;
                 }
             }

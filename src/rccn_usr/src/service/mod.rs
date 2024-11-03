@@ -243,7 +243,7 @@ pub struct SubserviceTmData {
 }
 
 pub struct AcceptedTc {
-    base: PusServiceBase,
+    pub base: PusServiceBase,
     pub token: VerificationToken<TcStateAccepted>,
 }
 
