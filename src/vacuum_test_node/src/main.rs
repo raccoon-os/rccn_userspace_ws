@@ -2,7 +2,10 @@ use anyhow::Result;
 use rccn_usr::{
     config::VirtualChannel,
     service::{AcceptanceError, PusService},
-    transport::{config::Ros2RxTransport, ros2::new_shared_ros2_node, RxTransport, TransportManager, TxTransport},
+    transport::{
+        config::Ros2RxTransport, ros2::new_shared_ros2_node, RxTransport, TransportManager,
+        TxTransport,
+    },
 };
 use stress_service::service::StressTestService;
 
@@ -10,21 +13,9 @@ mod stress_service;
 
 fn main() -> Result<()> {
     let node = new_shared_ros2_node("vacuum_test_node", &"/")?;
+
     let mut transport_manager = TransportManager::new_with_ros2_node(node.clone())?;
-
-    // Configure virtual channel for TC/TM
-    let vc = VirtualChannel {
-        id: 0,
-        name: "bus_realtime".into(),
-        splitter: None,
-        tx_transport: Some(TxTransport::Ros2("/vc/bus_realtime/tx".into())),
-        rx_transport: Some(RxTransport::Ros2(Ros2RxTransport::with_topic(
-            "/vc/bus_realtime/rx",
-        ))),
-    };
-    transport_manager.add_virtual_channel(&vc)?;
-
-    // Start the transport manager
+    transport_manager.add_virtual_channel(&VirtualChannel::new_ros2("bus_realtime", 0))?;
     let ((vc_tx_map, mut vc_rx_map), transport_handles) = transport_manager.run();
 
     let mut stress_service = StressTestService::new(42, &vc_tx_map);
