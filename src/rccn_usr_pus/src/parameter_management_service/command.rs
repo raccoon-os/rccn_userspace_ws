@@ -38,7 +38,7 @@ impl ServiceCommand for Command {
                     parameter_hashes: hashes,
                 })
             }
-            2 => {
+            3 => {
                 // SetParameterValues
                 let n = bb.get_bits(16) as u16;
                 let data = &buffer[2..];

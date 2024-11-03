@@ -1,9 +1,9 @@
 //! Implementation of ECSS PUS Service 20 - Parameter Management Service
-//! 
+//!
 //! This service provides the capability to:
 //! - Report parameter values (subservice 1)
 //! - Set parameter values (subservice 2)
-//! 
+//!
 //! The service operates on parameters that implement the `PusParameters` trait,
 //! which provides methods to serialize/deserialize parameter values to/from bytes.
 //! Each parameter is identified by a unique 32-bit hash.
@@ -22,26 +22,34 @@ use super::{command::Command, ParameterError, PusParameters};
 type SharedPusParameters = Arc<Mutex<dyn PusParameters + Send>>;
 
 /// Implementation of ECSS PUS Service 20 - Parameter Management Service
-/// 
+///
 /// This service allows reading and writing spacecraft parameters through two subservices:
-/// 
+///
 /// - Subservice 1 (Report Parameter Values):
 ///   Generates a report containing the current values of requested parameters
 ///   
-/// - Subservice 2 (Set Parameter Values): 
+/// - Subservice 3 (Set Parameter Values):
 ///   Updates parameter values based on provided data
 ///
 /// # Example
 /// ```
-/// use rccn_usr::service::PusServiceBase;
 /// use std::sync::{Arc, Mutex};
-/// 
+/// use crossbeam::channel::bounded;
+/// use rccn_usr::{service::PusServiceBase, types::VirtualChannelTxMap};
+/// use rccn_usr_pus::parameter_management_service::{ParameterError, PusParameters, service::ParameterManagementService};
+/// use rccn_usr_pus_macros::PusParameters;
+/// use xtce_rs::bitbuffer::{BitBuffer, BitWriter};
+///
 /// #[derive(PusParameters)]
 /// struct MyParams {
 ///     #[hash(0x1234)]
 ///     temperature: f32,
 /// }
-/// 
+///
+/// let (tm_tx, tm_rx) = bounded(4);
+/// let mut vc_map = VirtualChannelTxMap::new();
+/// vc_map.insert(0, tm_tx);
+///
 /// let params = Arc::new(Mutex::new(MyParams { temperature: 20.5 }));
 /// let service = ParameterManagementService::new(
 ///     PusServiceBase::new(1, 20, 0, &vc_map),
@@ -57,13 +65,13 @@ impl ParameterManagementService {
     /// Creates a new Parameter Management Service instance
     ///
     /// # Arguments
-    /// * `base` - Base PUS service configuration 
+    /// * `base` - Base PUS service configuration
     /// * `parameters` - Thread-safe reference to parameters that implement PusParameters
     pub fn new(base: PusServiceBase, parameters: SharedPusParameters) -> Self {
         Self { base, parameters }
     }
 
-    /// Generates a report containing the current values of requested parameters
+    /// Generates a TM\[20,2\] report containing the current values of requested parameters
     ///
     /// # Arguments
     /// * `n` - Number of parameters to report
@@ -72,7 +80,7 @@ impl ParameterManagementService {
     /// # Returns
     /// * `Ok(SubserviceTmData)` - TM packet containing parameter values
     /// * `Err(ParameterError)` - If parameter not found or serialization fails
-    fn report_parameter_values(
+    pub fn report_parameter_values(
         &mut self,
         n: u16,
         hashes: &Vec<u32>,
@@ -101,7 +109,7 @@ impl ParameterManagementService {
         let bytes_written = bits_written.div_ceil(8);
 
         Ok(SubserviceTmData {
-            subservice: 1,
+            subservice: 2,
             data: Vec::from(&data[0..bytes_written]),
         })
     }
@@ -114,7 +122,7 @@ impl ParameterManagementService {
     /// # Returns
     /// * `true` if all parameters were updated successfully
     /// * `false` if any parameter update failed
-    fn set_parameter_values(&self, n: u16, parameter_set_data: &Vec<u8>) -> bool {
+    pub fn set_parameter_values(&self, n: u16, parameter_set_data: &Vec<u8>) -> bool {
         let mut bb = BitBuffer::wrap(&parameter_set_data);
         let mut params = self.parameters.lock().unwrap();
 
@@ -196,7 +204,7 @@ mod tests {
         let mut common = TestCommon::new(TestParameters {
             a: 0xc0ff,
             b: 1.337,
-            c: -42
+            c: -42,
         });
 
         let mut tc_data = [0u8; 128];
@@ -223,7 +231,7 @@ mod tests {
         let service_tm_bytes = common.tm_rx.try_recv().unwrap();
         let (service_tm, _) = PusTmReader::new(&service_tm_bytes, 8).unwrap();
         assert_eq!(service_tm.service(), 20);
-        assert_eq!(service_tm.subservice(), 1);
+        assert_eq!(service_tm.subservice(), 2);
 
         // Check TM app data
         let mut reader = BitBuffer::wrap(&service_tm.source_data());
@@ -242,10 +250,7 @@ mod tests {
 
         // third parameter
         assert_eq!(reader.get_bits(32), 0xF00BA400);
-        assert_eq!(
-            reader.get_bits(32) as i32,
-            -42i32
-        );
+        assert_eq!(reader.get_bits(32) as i32, -42i32);
     }
 
     #[test]
@@ -253,7 +258,7 @@ mod tests {
         let mut common = TestCommon::new(TestParameters {
             a: 0xc0ff,
             b: 1.337,
-            c: -42
+            c: -42,
         });
 
         let mut tc_data = [0u8; 128];
@@ -266,7 +271,7 @@ mod tests {
         tc_buffer.write_bits(0xF00BA400, 32).unwrap();
         tc_buffer.write_bytes(&(-99i64).to_be_bytes()).unwrap();
 
-        let tc = create_pus_tc(1, 20, 2, &tc_data);
+        let tc = create_pus_tc(1, 20, 3, &tc_data);
 
         assert_eq!(
             common
@@ -291,10 +296,8 @@ mod tests {
     pub struct TestCommon {
         tm_rx: Receiver,
         service: ParameterManagementService,
-        parameters: Arc<Mutex<TestParameters>>
+        parameters: Arc<Mutex<TestParameters>>,
     }
-
-
 
     impl TestCommon {
         fn new(parameters: TestParameters) -> Self {
@@ -309,7 +312,11 @@ mod tests {
                 shared_parameters.clone(),
             );
 
-            TestCommon { tm_rx, service, parameters: shared_parameters }
+            TestCommon {
+                tm_rx,
+                service,
+                parameters: shared_parameters,
+            }
         }
 
         fn assert_verif_tm(&mut self) {
@@ -319,5 +326,4 @@ mod tests {
             }
         }
     }
-
 }
