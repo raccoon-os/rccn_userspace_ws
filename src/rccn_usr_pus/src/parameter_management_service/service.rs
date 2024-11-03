@@ -10,14 +10,20 @@
 
 use std::sync::{Arc, Mutex};
 
-use rccn_usr::service::{
-    AcceptanceResult, AcceptedTc, CommandExecutionStatus, PusService, PusServiceBase,
-    SubserviceTmData,
+use rccn_usr::{
+    service::{
+        AcceptanceResult, AcceptedTc, CommandExecutionStatus, PusService, PusServiceBase,
+        SubserviceTmData,
+    },
+    types::VirtualChannelTxMap,
 };
 use satrs::spacepackets::ecss::EcssEnumU8;
 use xtce_rs::bitbuffer::{BitBuffer, BitWriter};
 
-use super::{command::Command, ParameterError, PusParameters};
+use super::{
+    command::{self, report_parameter_values, set_parameter_values, Command},
+    ParameterError, PusParameters,
+};
 
 type SharedPusParameters = Arc<Mutex<dyn PusParameters + Send>>;
 
@@ -51,11 +57,9 @@ type SharedPusParameters = Arc<Mutex<dyn PusParameters + Send>>;
 /// vc_map.insert(0, tm_tx);
 ///
 /// let params = Arc::new(Mutex::new(MyParams { temperature: 20.5 }));
-/// let service = ParameterManagementService::new(
-///     PusServiceBase::new(1, 20, 0, &vc_map),
-///     params
-/// );
+/// let service = ParameterManagementService::new(1, params, &vc_map);
 /// ```
+
 pub struct ParameterManagementService {
     base: PusServiceBase,
     parameters: SharedPusParameters,
@@ -67,8 +71,11 @@ impl ParameterManagementService {
     /// # Arguments
     /// * `base` - Base PUS service configuration
     /// * `parameters` - Thread-safe reference to parameters that implement PusParameters
-    pub fn new(base: PusServiceBase, parameters: SharedPusParameters) -> Self {
-        Self { base, parameters }
+    pub fn new(apid: u16, parameters: SharedPusParameters, vc_map: &VirtualChannelTxMap) -> Self {
+        Self {
+            base: PusServiceBase::new(apid, 20, 0, vc_map),
+            parameters,
+        }
     }
 
     /// Generates a TM\[20,2\] report containing the current values of requested parameters
@@ -148,10 +155,16 @@ impl PusService for ParameterManagementService {
         let base = self.get_service_base();
 
         match cmd {
+            /*
             Command::ReportParameterValues {
                 number_of_parameters,
                 parameter_hashes,
             } => {
+            }*/
+            Command::ReportParameterValues(report_parameter_values::Args {
+                number_of_parameters,
+                parameter_hashes,
+            }) => {
                 // Make sure the command is properly constructed.
                 if number_of_parameters != parameter_hashes.len() as u16 {
                     base.send_start_failure(tc.token, &EcssEnumU8::new(0), &[])
@@ -164,10 +177,10 @@ impl PusService for ParameterManagementService {
                     self.report_parameter_values(number_of_parameters, &parameter_hashes)
                 })
             }
-            Command::SetParameterValues {
+            Command::SetParameterValues(set_parameter_values::Args {
                 number_of_parameters,
                 parameter_set_data,
-            } => tc.handle(|| self.set_parameter_values(number_of_parameters, &parameter_set_data)),
+            }) => tc.handle(|| self.set_parameter_values(number_of_parameters, &parameter_set_data)),
         }
     }
 }
@@ -307,10 +320,7 @@ mod tests {
 
             let shared_parameters = Arc::new(Mutex::new(parameters));
 
-            let service = ParameterManagementService::new(
-                PusServiceBase::new(1, 20, 0, &map),
-                shared_parameters.clone(),
-            );
+            let service = ParameterManagementService::new(1, shared_parameters.clone(), &map);
 
             TestCommon {
                 tm_rx,

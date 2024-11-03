@@ -2,20 +2,30 @@ use rccn_usr::service::{CommandParseError, CommandParseResult, ServiceCommand};
 use satrs::spacepackets::ecss::{tc::PusTcReader, PusPacket};
 use xtce_rs::bitbuffer::BitBuffer;
 
+pub mod report_parameter_values {
+    #[derive(Debug)]
+    pub struct Args {
+        pub number_of_parameters: u16,
+        pub parameter_hashes: Vec<u32>,
+    }
+}
+
+pub mod set_parameter_values {
+    #[derive(Debug)]
+    pub struct Args {
+        pub number_of_parameters: u16,
+        pub parameter_set_data: Vec<u8>
+    }
+}
+
 pub enum Command {
-    ReportParameterValues {
-        number_of_parameters: u16,
-        parameter_hashes: Vec<u32>,
-    },
+    ReportParameterValues(report_parameter_values::Args),
 
     /// Request to set a number of parameters to the new values provided in parameter_set_data.
     /// The parameter_set_data depends on the byte length of each of the parameters.
     /// Only the service handler knows this information, so we cannot extract a more
     /// meaningful data structure at parse time.
-    SetParameterValues {
-        number_of_parameters: u16,
-        parameter_set_data: Vec<u8>,
-    },
+    SetParameterValues(set_parameter_values::Args),
 }
 
 impl ServiceCommand for Command {
@@ -33,20 +43,20 @@ impl ServiceCommand for Command {
                     hashes.push(bb.get_bits(32) as u32);
                 }
 
-                Ok(Self::ReportParameterValues {
+                Ok(Self::ReportParameterValues(report_parameter_values::Args {
                     number_of_parameters: n,
                     parameter_hashes: hashes,
-                })
+                }))
             }
             3 => {
                 // SetParameterValues
                 let n = bb.get_bits(16) as u16;
                 let data = &buffer[2..];
 
-                Ok(Self::SetParameterValues {
+                Ok(Self::SetParameterValues(set_parameter_values::Args {
                     number_of_parameters: n,
                     parameter_set_data: data.to_vec(),
-                })
+                }))
             }
             _ => Err(CommandParseError::UnknownSubservice(tc.subservice())),
         }
