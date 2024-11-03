@@ -1,4 +1,5 @@
 mod macros;
+pub mod util;
 
 use crate::{
     impl_verification_sender,
@@ -153,6 +154,7 @@ impl Into<EcssEnumU8> for AcceptanceError {
 }
 
 /// Represents the possible outcomes of a successfully accepted command.
+#[derive(Debug, PartialEq)]
 pub enum CommandExecutionStatus {
     /// The task requested by the command has been started, but has not finished executing.
     Started,

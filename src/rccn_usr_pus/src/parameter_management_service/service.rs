@@ -1,10 +1,11 @@
 use std::sync::{Arc, Mutex};
 
-use rccn_usr::service::{AcceptanceResult, AcceptedTc, CommandExecutionStatus, PusService, PusServiceBase, SubserviceTmData};
-use satrs::
-    spacepackets::ecss::EcssEnumU8
-;
-use xtce_rs::bitbuffer::BitWriter;
+use rccn_usr::service::{
+    AcceptanceResult, AcceptedTc, CommandExecutionStatus, PusService, PusServiceBase,
+    SubserviceTmData,
+};
+use satrs::spacepackets::ecss::EcssEnumU8;
+use xtce_rs::bitbuffer::{BitBuffer, BitWriter};
 
 use super::{command::Command, ParameterError, PusParameters};
 
@@ -53,8 +54,18 @@ impl ParameterManagementService {
             data: Vec::from(&data[0..bytes_written]),
         })
     }
-    fn set_parameter_values(&self, number_of_parameters: u16, parameter_data: &Vec<u8>) -> bool {
-        false
+    fn set_parameter_values(&self, n: u16, parameter_set_data: &Vec<u8>) -> bool {
+        let mut bb = BitBuffer::wrap(&parameter_set_data);
+        let mut params = self.parameters.lock().unwrap();
+
+        for _ in 0..n {
+            let hash = bb.get_bits(32) as u32;
+
+            if !params.set_parameter_from_be_bytes(hash, &mut bb) {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -65,13 +76,9 @@ impl PusService for ParameterManagementService {
         self.base.clone()
     }
 
-    fn handle_tc(
-        &mut self,
-        mut tc: AcceptedTc,
-        cmd: Self::CommandT
-    ) -> AcceptanceResult {
+    fn handle_tc(&mut self, mut tc: AcceptedTc, cmd: Self::CommandT) -> AcceptanceResult {
         let base = self.get_service_base();
- 
+
         match cmd {
             Command::ReportParameterValues {
                 number_of_parameters,
@@ -92,9 +99,191 @@ impl PusService for ParameterManagementService {
             Command::SetParameterValues {
                 number_of_parameters,
                 parameter_set_data,
-            } => tc.handle(|| {
-                self.set_parameter_values(number_of_parameters, &parameter_set_data)
-            })
+            } => tc.handle(|| self.set_parameter_values(number_of_parameters, &parameter_set_data)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::{Arc, Mutex};
+
+    use crossbeam::channel::bounded;
+    use rccn_usr::{
+        service::{util::create_pus_tc, CommandExecutionStatus, PusService, PusServiceBase},
+        types::{Receiver, VirtualChannelTxMap},
+    };
+    use satrs::spacepackets::ecss::{tm::PusTmReader, PusPacket, WritablePusPacket};
+    use xtce_rs::bitbuffer::{BitBuffer, BitWriter};
+
+    use crate::parameter_management_service::{src_buffer_to_u64, ParameterError, PusParameters};
+
+    use super::{ParameterManagementService, SharedPusParameters};
+
+    #[test]
+    fn test_read_end_to_end() {
+        let mut common = TestCommon::new(TestParameters {
+            a: 0xc0ff,
+            b: 1.337,
+        });
+
+        let mut tc_data = [0u8; 128];
+        let mut tc_buffer = BitWriter::wrap(&mut tc_data);
+        tc_buffer.write_bits(2, 16).unwrap();
+        tc_buffer.write_bits(0xABCDEF00, 32).unwrap();
+        tc_buffer.write_bits(0x00EFCDAB, 32).unwrap();
+
+        let tc = create_pus_tc(1, 20, 1, &tc_data);
+
+        assert_eq!(
+            common
+                .service
+                .handle_tc_bytes(&tc.to_vec().unwrap())
+                .unwrap(),
+            CommandExecutionStatus::Completed
+        );
+
+        // Check verification TM
+        common.assert_verif_tm();
+
+        // Check TM header
+        let service_tm_bytes = common.tm_rx.try_recv().unwrap();
+        let (service_tm, _) = PusTmReader::new(&service_tm_bytes, 8).unwrap();
+        assert_eq!(service_tm.service(), 20);
+        assert_eq!(service_tm.subservice(), 1);
+
+        // Check TM app data
+        let mut reader = BitBuffer::wrap(&service_tm.source_data());
+        assert_eq!(reader.get_bits(16), 2); // number of parameters
+
+        // first parameter
+        assert_eq!(reader.get_bits(32), 0xABCDEF00);
+        assert_eq!(reader.get_bits(16), 0xC0FF);
+
+        // second parameter
+        assert_eq!(reader.get_bits(32), 0x00EFCDAB);
+        assert_eq!(
+            reader.get_bits(32),
+            src_buffer_to_u64(&(1.337_f32).to_be_bytes(), 32)
+        );
+    }
+
+    #[test]
+    fn test_write_end_to_end() {
+        let mut common = TestCommon::new(TestParameters {
+            a: 0xc0ff,
+            b: 1.337,
+        });
+
+        let mut tc_data = [0u8; 128];
+        let mut tc_buffer = BitWriter::wrap(&mut tc_data);
+        tc_buffer.write_bits(2, 16).unwrap();
+        tc_buffer.write_bits(0xABCDEF00, 32).unwrap();
+        tc_buffer.write_bits(0x0000_0000_0000_babe, 64).unwrap();
+        tc_buffer.write_bits(0x00EFCDAB, 32).unwrap();
+        tc_buffer.write_bytes(&(337.1_f64.to_be_bytes())).unwrap();
+
+        let tc = create_pus_tc(1, 20, 2, &tc_data);
+
+        assert_eq!(
+            common
+                .service
+                .handle_tc_bytes(&tc.to_vec().unwrap())
+                .unwrap(),
+            CommandExecutionStatus::Completed
+        );
+
+        // Check verification TM
+        common.assert_verif_tm();
+
+        // Check that the values have been changed
+        {
+            let parameters = common.parameters.lock().unwrap();
+            assert_eq!(parameters.a, 0xBABE);
+            assert_eq!(parameters.b, 337.1_f32);
+        }
+    }
+
+    pub struct TestCommon {
+        tm_rx: Receiver,
+        service: ParameterManagementService,
+        parameters: Arc<Mutex<TestParameters>>
+    }
+
+    impl TestCommon {
+        fn new(parameters: TestParameters) -> Self {
+            let (tm_tx, tm_rx) = bounded(4);
+            let mut map = VirtualChannelTxMap::new();
+            map.insert(0, tm_tx);
+
+            let shared_parameters = Arc::new(Mutex::new(parameters));
+
+            let service = ParameterManagementService::new(
+                PusServiceBase::new(1, 20, 0, &map),
+                shared_parameters.clone(),
+            );
+
+            TestCommon { tm_rx, service, parameters: shared_parameters }
+        }
+
+        fn assert_verif_tm(&mut self) {
+            // TODO: currently we just drop 3 TM packets (accepted, started, completed)
+            for _ in 0..3 {
+                self.tm_rx.try_recv().unwrap();
+            }
+        }
+    }
+
+    struct TestParameters {
+        a: u16,
+        b: f32,
+    }
+
+    impl PusParameters for TestParameters {
+        fn get_parameter_as_be_bytes(
+            &self,
+            hash: u32,
+            writer: &mut BitWriter,
+        ) -> Result<usize, ParameterError> {
+            match hash {
+                0xABCDEF00 => {
+                    writer
+                        .write_bytes(&self.a.to_be_bytes())
+                        .map_err(ParameterError::WriteError)?;
+                    Ok(16)
+                }
+                0x00EFCDAB => {
+                    writer
+                        .write_bytes(&self.b.to_be_bytes())
+                        .map_err(ParameterError::WriteError)?;
+                    Ok(32)
+                }
+                _ => Err(ParameterError::UnknownParameter(hash)),
+            }
+        }
+
+        fn set_parameter_from_be_bytes(&mut self, hash: u32, buffer: &mut BitBuffer) -> bool {
+            // Parameter set commands always use 64 bit numbers
+            match hash {
+                0xABCDEF00 => {
+                    let val = buffer.get_bits(64).to_be_bytes();
+                    let start = ((64 - 16) as usize).div_ceil(8);
+                    self.a = u16::from_be_bytes(val[start..].try_into().unwrap());
+
+                    true
+                }
+                0x00EFCDAB => {
+                    let val = f64::from_be_bytes(buffer.get_bits(64).to_be_bytes());
+                    self.b = val as f32;
+
+                    true
+                }
+                _ => false,
+            }
+        }
+
+        fn get_parameter_size(&self, hash: u32) -> Option<usize> {
+            todo!() // Unused, we should get rid of this function
         }
     }
 }
