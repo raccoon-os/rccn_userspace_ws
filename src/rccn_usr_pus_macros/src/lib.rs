@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Fields, Meta, NestedMeta, Type};
+use syn::{parse_macro_input, punctuated::Punctuated, Data, DeriveInput, Fields, Meta, NestedMeta, Type};
 
 /// Derives the PusParameters trait implementation for a struct.
 ///
@@ -58,26 +58,22 @@ pub fn derive_pus_parameters(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-fn generate_aggregate_impl(name: &syn::Ident, fields: syn::punctuated::Punctuated<syn::Field, syn::token::Comma>) -> proc_macro2::TokenStream {
-    let mut field_tries = quote!();
+fn generate_aggregate_impl(name: &syn::Ident, fields: Punctuated<syn::Field, syn::token::Comma>) -> proc_macro2::TokenStream {
+    let mut get_parameter_tries = quote!();
+    let mut set_parameter_tries = quote!();
 
     for field in fields {
         let field_name = field.ident.unwrap();
         
         // Add try for get_parameter
-        field_tries.extend(quote! {
+        get_parameter_tries.extend(quote! {
             if let Ok(size) = self.#field_name.get_parameter_as_be_bytes(hash, writer) {
                 return Ok(size);
             }
         });
-    }
-
-    let mut set_field_tries = quote!();
-    for field in fields {
-        let field_name = field.ident.unwrap();
         
         // Add try for set_parameter
-        set_field_tries.extend(quote! {
+        set_parameter_tries.extend(quote! {
             if self.#field_name.set_parameter_from_be_bytes(hash, buffer) {
                 return true;
             }
@@ -91,12 +87,12 @@ fn generate_aggregate_impl(name: &syn::Ident, fields: syn::punctuated::Punctuate
                 hash: u32,
                 writer: &mut BitWriter,
             ) -> Result<usize, ParameterError> {
-                #field_tries
+                #get_parameter_tries
                 Err(ParameterError::UnknownParameter(hash))
             }
 
             fn set_parameter_from_be_bytes(&mut self, hash: u32, buffer: &mut BitBuffer) -> bool {
-                #set_field_tries
+                #set_parameter_tries
                 false
             }
 
@@ -107,7 +103,7 @@ fn generate_aggregate_impl(name: &syn::Ident, fields: syn::punctuated::Punctuate
     }
 }
 
-fn generate_parameter_impl(name: &syn::Ident, fields: syn::punctuated::Punctuated<syn::Field, syn::token::Comma>) -> proc_macro2::TokenStream {
+fn generate_parameter_impl(name: &syn::Ident, fields: Punctuated<syn::Field, syn::token::Comma>) -> proc_macro2::TokenStream {
     let mut get_param_matches = quote!();
     let mut set_param_matches = quote!();
 
@@ -210,7 +206,5 @@ fn generate_parameter_impl(name: &syn::Ident, fields: syn::punctuated::Punctuate
                 None // Deprecated function
             }
         }
-    };
-
-    TokenStream::from(expanded)
+    }
 }

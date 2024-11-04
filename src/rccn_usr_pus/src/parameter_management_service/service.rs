@@ -180,7 +180,9 @@ impl PusService for ParameterManagementService {
             Command::SetParameterValues(set_parameter_values::Args {
                 number_of_parameters,
                 parameter_set_data,
-            }) => tc.handle(|| self.set_parameter_values(number_of_parameters, &parameter_set_data)),
+            }) => {
+                tc.handle(|| self.set_parameter_values(number_of_parameters, &parameter_set_data))
+            }
         }
     }
 }
@@ -212,12 +214,20 @@ mod tests {
         c: i32,
     }
 
+    #[derive(PusParameters)]
+    #[aggregate]
+    struct AggregateParameters {
+        test_params: TestParameters,
+    }
+
     #[test]
     fn test_read_end_to_end() {
-        let mut common = TestCommon::new(TestParameters {
-            a: 0xc0ff,
-            b: 1.337,
-            c: -42,
+        let mut common = TestCommon::new(AggregateParameters {
+            test_params: TestParameters {
+                a: 0xc0ff,
+                b: 1.337,
+                c: -42,
+            },
         });
 
         let mut tc_data = [0u8; 128];
@@ -268,10 +278,12 @@ mod tests {
 
     #[test]
     fn test_write_end_to_end() {
-        let mut common = TestCommon::new(TestParameters {
-            a: 0xc0ff,
-            b: 1.337,
-            c: -42,
+        let mut common = TestCommon::new(AggregateParameters {
+            test_params: TestParameters {
+                a: 0xc0ff,
+                b: 1.337,
+                c: -42,
+            },
         });
 
         let mut tc_data = [0u8; 128];
@@ -300,20 +312,20 @@ mod tests {
         // Check that the values have been changed
         {
             let parameters = common.parameters.lock().unwrap();
-            assert_eq!(parameters.a, 0xBABE);
-            assert_eq!(parameters.b, 337.1_f32);
-            assert_eq!(parameters.c, -99);
+            assert_eq!(parameters.test_params.a, 0xBABE);
+            assert_eq!(parameters.test_params.b, 337.1_f32);
+            assert_eq!(parameters.test_params.c, -99);
         }
     }
 
     pub struct TestCommon {
         tm_rx: Receiver,
         service: ParameterManagementService,
-        parameters: Arc<Mutex<TestParameters>>,
+        parameters: Arc<Mutex<AggregateParameters>>,
     }
 
     impl TestCommon {
-        fn new(parameters: TestParameters) -> Self {
+        fn new(parameters: AggregateParameters) -> Self {
             let (tm_tx, tm_rx) = bounded(4);
             let mut map = VirtualChannelTxMap::new();
             map.insert(0, tm_tx);
