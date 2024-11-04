@@ -695,6 +695,7 @@ dependencies = [
  "futures-core",
  "futures-task",
  "futures-util",
+ "num_cpus",
 ]
 
 [[package]]
@@ -1859,6 +1860,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "binary_serde",
+ "futures",
  "rccn_usr",
  "rccn_usr_pus",
  "satrs",
