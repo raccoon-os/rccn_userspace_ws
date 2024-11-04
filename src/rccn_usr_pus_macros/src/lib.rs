@@ -4,11 +4,15 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields, Meta, NestedMeta, Type};
 
 /// Derives the PusParameters trait implementation for a struct.
 ///
-/// This derive macro automatically implements the PusParameters trait for structs containing
-/// fields that represent spacecraft parameters. Each field must be annotated with a `#[hash]`
-/// attribute specifying a unique 32-bit identifier.
+/// This derive macro supports two types of parameter structs:
 ///
-/// # Supported Field Types
+/// 1. Regular parameter structs where each field represents a spacecraft parameter
+///    and must be annotated with a `#[hash]` attribute specifying a unique 32-bit identifier.
+///
+/// 2. Aggregate structs marked with `#[aggregate]` that contain only fields implementing
+///    PusParameters. These structs forward parameter requests to their fields until one succeeds.
+///
+/// # Supported Field Types (for regular parameter structs)
 /// - `f32`: 32-bit floating point
 /// - `u8`: 8-bit unsigned integer
 /// - `u16`: 16-bit unsigned integer
@@ -29,7 +33,7 @@ use syn::{parse_macro_input, Data, DeriveInput, Fields, Meta, NestedMeta, Type};
 ///     voltage: u16,
 /// }
 /// ```
-#[proc_macro_derive(PusParameters, attributes(hash))]
+#[proc_macro_derive(PusParameters, attributes(hash, aggregate))]
 pub fn derive_pus_parameters(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = input.ident;
@@ -42,6 +46,68 @@ pub fn derive_pus_parameters(input: TokenStream) -> TokenStream {
         _ => panic!("Only structs are supported"),
     };
 
+    // Check if this is an aggregate struct
+    let is_aggregate = input.attrs.iter().any(|attr| attr.path.is_ident("aggregate"));
+
+    let expanded = if is_aggregate {
+        generate_aggregate_impl(&name, fields)
+    } else {
+        generate_parameter_impl(&name, fields)
+    };
+
+    TokenStream::from(expanded)
+}
+
+fn generate_aggregate_impl(name: &syn::Ident, fields: syn::punctuated::Punctuated<syn::Field, syn::token::Comma>) -> proc_macro2::TokenStream {
+    let mut field_tries = quote!();
+
+    for field in fields {
+        let field_name = field.ident.unwrap();
+        
+        // Add try for get_parameter
+        field_tries.extend(quote! {
+            if let Ok(size) = self.#field_name.get_parameter_as_be_bytes(hash, writer) {
+                return Ok(size);
+            }
+        });
+    }
+
+    let mut set_field_tries = quote!();
+    for field in fields {
+        let field_name = field.ident.unwrap();
+        
+        // Add try for set_parameter
+        set_field_tries.extend(quote! {
+            if self.#field_name.set_parameter_from_be_bytes(hash, buffer) {
+                return true;
+            }
+        });
+    }
+
+    quote! {
+        impl PusParameters for #name {
+            fn get_parameter_as_be_bytes(
+                &self,
+                hash: u32,
+                writer: &mut BitWriter,
+            ) -> Result<usize, ParameterError> {
+                #field_tries
+                Err(ParameterError::UnknownParameter(hash))
+            }
+
+            fn set_parameter_from_be_bytes(&mut self, hash: u32, buffer: &mut BitBuffer) -> bool {
+                #set_field_tries
+                false
+            }
+
+            fn get_parameter_size(&self, _hash: u32) -> Option<usize> {
+                None
+            }
+        }
+    }
+}
+
+fn generate_parameter_impl(name: &syn::Ident, fields: syn::punctuated::Punctuated<syn::Field, syn::token::Comma>) -> proc_macro2::TokenStream {
     let mut get_param_matches = quote!();
     let mut set_param_matches = quote!();
 
@@ -120,7 +186,7 @@ pub fn derive_pus_parameters(input: TokenStream) -> TokenStream {
         });
     }
 
-    let expanded = quote! {
+    quote! {
         impl PusParameters for #name {
             fn get_parameter_as_be_bytes(
                 &self,
