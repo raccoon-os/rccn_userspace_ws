@@ -30,7 +30,8 @@ RUN pip install uv \
 COPY --chown=$USERNAME ./src $OVERLAY_WS/src
 
 # Build workspace
-RUN . /opt/ros/humble/setup.sh && \
+RUN . ~/.cargo/env && \
+    . /opt/ros/humble/setup.sh && \
     . .venv/bin/activate && \
     touch .venv/COLCON_IGNORE && \
     colcon build \
