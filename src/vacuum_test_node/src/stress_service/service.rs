@@ -2,22 +2,19 @@ use crate::stress_service::command::StressServiceCommand;
 use futures::{executor::ThreadPool, task::SpawnExt};
 use rccn_usr::{
     r2r::{self, thermal_test_msgs::action::StressTest},
-    service::{AcceptanceResult, AcceptedTc, CommandExecutionStatus, PusService, PusServiceBase},
+    service::{AcceptanceResult, AcceptedTc, CommandExecutionStatus, PusService},
     transport::ros2::SharedNode,
-    types::VirtualChannelTxMap,
 };
 use satrs::spacepackets::ecss::EcssEnumU8;
 
 pub struct StressTestService {
-    service_base: PusServiceBase,
     pool: ThreadPool,
     node: SharedNode,
 }
 
 impl StressTestService {
-    pub fn new(apid: u16, vc_map: &VirtualChannelTxMap, node: SharedNode) -> Self {
+    pub fn new(node: SharedNode) -> Self {
         Self {
-            service_base: PusServiceBase::new(apid, 142, 12345u64, vc_map),
             pool: ThreadPool::new().unwrap(),
             node,
         }
@@ -77,13 +74,7 @@ async fn send_stress_test_goal(
 impl PusService for StressTestService {
     type CommandT = StressServiceCommand;
 
-    fn get_service_base(&mut self) -> PusServiceBase {
-        self.service_base.clone()
-    }
-
     fn handle_tc(&mut self, tc: AcceptedTc, cmd: Self::CommandT) -> AcceptanceResult {
-        let _base = self.get_service_base();
-
         println!("Stress service command {:?}", cmd);
 
         let node = self.node.clone();

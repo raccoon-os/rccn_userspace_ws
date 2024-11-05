@@ -10,13 +10,12 @@
 
 use std::sync::{Arc, Mutex};
 
-use rccn_usr::{
+use rccn_usr::
     service::{
-        AcceptanceResult, AcceptedTc, CommandExecutionStatus, PusService, PusServiceBase,
+        AcceptanceResult, AcceptedTc, CommandExecutionStatus, PusService,
         SubserviceTmData,
-    },
-    types::VirtualChannelTxMap,
-};
+    }
+;
 use satrs::spacepackets::ecss::EcssEnumU8;
 use xtce_rs::bitbuffer::{BitBuffer, BitWriter};
 
@@ -40,8 +39,6 @@ type SharedPusParameters = Arc<Mutex<dyn PusParameters + Send>>;
 /// # Example
 /// ```
 /// use std::sync::{Arc, Mutex};
-/// use crossbeam::channel::bounded;
-/// use rccn_usr::{service::PusServiceBase, types::VirtualChannelTxMap};
 /// use rccn_usr_pus::parameter_management_service::{ParameterError, PusParameters, service::ParameterManagementService};
 /// use rccn_usr_pus_macros::PusParameters;
 /// use xtce_rs::bitbuffer::{BitBuffer, BitWriter};
@@ -52,16 +49,11 @@ type SharedPusParameters = Arc<Mutex<dyn PusParameters + Send>>;
 ///     temperature: f32,
 /// }
 ///
-/// let (tm_tx, tm_rx) = bounded(4);
-/// let mut vc_map = VirtualChannelTxMap::new();
-/// vc_map.insert(0, tm_tx);
-///
 /// let params = Arc::new(Mutex::new(MyParams { temperature: 20.5 }));
-/// let service = ParameterManagementService::new(1, params, &vc_map);
+/// let service = ParameterManagementService::new(params);
 /// ```
 
 pub struct ParameterManagementService {
-    base: PusServiceBase,
     parameters: SharedPusParameters,
 }
 
@@ -69,13 +61,9 @@ impl ParameterManagementService {
     /// Creates a new Parameter Management Service instance
     ///
     /// # Arguments
-    /// * `base` - Base PUS service configuration
     /// * `parameters` - Thread-safe reference to parameters that implement PusParameters
-    pub fn new(apid: u16, parameters: SharedPusParameters, vc_map: &VirtualChannelTxMap) -> Self {
-        Self {
-            base: PusServiceBase::new(apid, 20, 0, vc_map),
-            parameters,
-        }
+    pub fn new(parameters: SharedPusParameters) -> Self {
+        Self { parameters }
     }
 
     /// Generates a TM\[20,2\] report containing the current values of requested parameters
@@ -147,12 +135,8 @@ impl ParameterManagementService {
 impl PusService for ParameterManagementService {
     type CommandT = Command;
 
-    fn get_service_base(&mut self) -> PusServiceBase {
-        self.base.clone()
-    }
-
     fn handle_tc(&mut self, mut tc: AcceptedTc, cmd: Self::CommandT) -> AcceptanceResult {
-        let base = self.get_service_base();
+        let base = tc.base.clone();
 
         match cmd {
             /*
@@ -193,8 +177,8 @@ mod tests {
 
     use crossbeam::channel::bounded;
     use rccn_usr::{
-        service::{util::create_pus_tc, CommandExecutionStatus, PusService},
-        types::{Receiver, VirtualChannelTxMap},
+        service::{util::create_pus_tc, CommandExecutionStatus, CommandReplyBase, PusService},
+        types::Receiver,
     };
     use rccn_usr_pus_macros::PusParameters;
     use satrs::spacepackets::ecss::{tm::PusTmReader, PusPacket, WritablePusPacket};
@@ -242,7 +226,7 @@ mod tests {
         assert_eq!(
             common
                 .service
-                .handle_tc_bytes(&tc.to_vec().unwrap())
+                .handle_tc_bytes(&tc.to_vec().unwrap(), common.reply_base.clone())
                 .unwrap(),
             CommandExecutionStatus::Completed
         );
@@ -301,7 +285,7 @@ mod tests {
         assert_eq!(
             common
                 .service
-                .handle_tc_bytes(&tc.to_vec().unwrap())
+                .handle_tc_bytes(&tc.to_vec().unwrap(), common.reply_base.clone())
                 .unwrap(),
             CommandExecutionStatus::Completed
         );
@@ -322,22 +306,20 @@ mod tests {
         tm_rx: Receiver,
         service: ParameterManagementService,
         parameters: Arc<Mutex<AggregateParameters>>,
+        reply_base: CommandReplyBase,
     }
 
     impl TestCommon {
         fn new(parameters: AggregateParameters) -> Self {
-            let (tm_tx, tm_rx) = bounded(4);
-            let mut map = VirtualChannelTxMap::new();
-            map.insert(0, tm_tx);
-
             let shared_parameters = Arc::new(Mutex::new(parameters));
+            let service = ParameterManagementService::new(shared_parameters.clone());
 
-            let service = ParameterManagementService::new(1, shared_parameters.clone(), &map);
-
+            let (tm_tx, tm_rx) = bounded(4);
             TestCommon {
                 tm_rx,
                 service,
                 parameters: shared_parameters,
+                reply_base: CommandReplyBase::new(1, 20, 0, tm_tx),
             }
         }
 

@@ -28,7 +28,7 @@ fn main() -> Result<()> {
     let ((vc_tx_map, mut vc_rx_map), transport_handles) = transport_manager.run();
 
     // Create our ExampleService
-    let mut example_service = ExampleService::new(42, &vc_tx_map);
+    let mut example_service = ExampleService::new();
 
 
     // Process incoming TCs from the virtual channel

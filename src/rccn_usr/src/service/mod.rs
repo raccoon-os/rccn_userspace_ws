@@ -4,7 +4,7 @@ pub mod util;
 use crate::{
     impl_verification_sender,
     time::TimestampHelper,
-    types::{RccnEcssTmSender, VirtualChannelTxMap},
+    types::{RccnEcssTmSender, Sender},
 };
 use satrs::{
     pus::verification::{TcStateAccepted, TcStateStarted},
@@ -33,22 +33,22 @@ use satrs::{
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
-pub struct PusServiceBase {
+pub struct CommandReplyBase {
     pub apid: u16,
     pub service: u8,
     pub verification_reporter: VerificationReporter,
-    pub virtual_channel_tx: VirtualChannelTxMap,
+    pub tx: Sender,
     pub timestamp_helper: TimestampHelper,
     pub component_id: ComponentId,
     pub msg_counter: Arc<Mutex<u16>>,
 }
 
-impl PusServiceBase {
+impl CommandReplyBase {
     pub fn new(
         apid: u16,
         service: u8,
         component_id: ComponentId,
-        vc_map: &VirtualChannelTxMap,
+        tx: Sender,
     ) -> Self {
         let verification_reporter_cfg =
             VerificationReporterCfg::new(apid, 1, 1, 100).expect("Invalid APID");
@@ -56,7 +56,7 @@ impl PusServiceBase {
         Self {
             apid,
             service,
-            virtual_channel_tx: vc_map.clone(),
+            tx: tx.clone(),
             timestamp_helper: TimestampHelper::new(),
             verification_reporter: VerificationReporter::new(
                 component_id,
@@ -67,14 +67,9 @@ impl PusServiceBase {
         }
     }
 
-    pub fn get_default_tm_sender(&self) -> RccnEcssTmSender {
-        let tm_channel_tx = self
-            .virtual_channel_tx
-            .get(&0)
-            .expect("Could not get TM sender for VC 0");
-
+    pub fn get_tm_sender(&self) -> RccnEcssTmSender {
         RccnEcssTmSender {
-            channel: tm_channel_tx.clone(),
+            channel: self.tx.clone(),
             msg_counter: self.msg_counter.clone(),
         }
     }
@@ -110,7 +105,7 @@ impl PusServiceBase {
     }
 
     pub fn send_tm<'ts, 'd>(&'ts self, tm: PusTmCreator<'ts, 'd>) -> Result<(), EcssTmtcError> {
-        self.get_default_tm_sender()
+        self.get_tm_sender()
             .send_tm(0, satrs::pus::PusTmVariant::Direct(tm))
     }
 }
@@ -175,13 +170,10 @@ pub trait ServiceCommand {
 pub trait PusService {
     type CommandT: ServiceCommand;
 
-    fn get_service_base(&mut self) -> PusServiceBase;
-
     fn handle_tc(&mut self, tc: AcceptedTc, cmd: Self::CommandT) -> AcceptanceResult;
 
-    fn handle_tc_bytes(&mut self, bytes: &[u8]) -> AcceptanceResult {
+    fn handle_tc_bytes(&mut self, bytes: &[u8], mut base: CommandReplyBase) -> AcceptanceResult {
         // ST[01] verification util
-        let mut base = self.get_service_base();
         let mut reporter = base.verification_reporter.clone();
 
         let pus_tc = match PusTcReader::new(&bytes) {
@@ -243,12 +235,12 @@ pub struct SubserviceTmData {
 }
 
 pub struct AcceptedTc {
-    pub base: PusServiceBase,
+    pub base: CommandReplyBase,
     pub token: VerificationToken<TcStateAccepted>,
 }
 
 impl AcceptedTc {
-    pub fn new(base: PusServiceBase, token: VerificationToken<TcStateAccepted>) -> Self {
+    pub fn new(base: CommandReplyBase, token: VerificationToken<TcStateAccepted>) -> Self {
         Self { base, token }
     }
 

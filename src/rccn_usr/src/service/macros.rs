@@ -6,7 +6,7 @@ macro_rules! impl_verification_sender {
                 &self,
                 token:  $state_in,
             ) -> Result<$state_out, EcssTmtcError> {
-                let tm_sender = self.get_default_tm_sender();
+                let tm_sender = self.get_tm_sender();
                 let reporter = self.verification_reporter.clone();
                 let timestamp = self.timestamp_helper.stamp();
 
@@ -19,7 +19,7 @@ macro_rules! impl_verification_sender {
                 failure_code: &dyn EcssEnumeration,
                 failure_data: &[u8],
             ) -> Result<(), EcssTmtcError> {
-                let tm_sender = self.get_default_tm_sender();
+                let tm_sender = self.get_tm_sender();
                 let reporter = self.verification_reporter.clone();
                 let timestamp = self.timestamp_helper.stamp();
 
