@@ -21,10 +21,8 @@ use xtce_rs::bitbuffer::{BitBuffer, BitWriter};
 
 use super::{
     command::{report_parameter_values, set_parameter_values, Command},
-    ParameterError, PusParameters,
+    ParameterError, PusParameters, SharedPusParameters,
 };
-
-type SharedPusParameters = Arc<Mutex<dyn PusParameters + Send>>;
 
 /// Implementation of ECSS PUS Service 20 - Parameter Management Service
 ///

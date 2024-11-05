@@ -20,6 +20,8 @@ pub trait PusParameters {
     fn get_parameter_size(&self, hash: u32) -> Option<usize>;
 }
 
+pub type SharedPusParameters = Arc<Mutex<dyn PusParameters + Send>>;
+
 pub fn src_buffer_to_u64(src: &[u8], bits: usize) -> u64 {
     assert!(bits <= 64);
     assert!(src.len() <= 8);
