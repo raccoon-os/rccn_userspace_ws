@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the workspace using docker
-      run: mkdir -p deploy/build && docker build . -f Dockerfile.cross --platform linux/arm64 --output deploy/out
+      run: ./devcontainer.sh --build-dev && mkdir -p deploy/build && docker build . -f Dockerfile.cross --platform linux/arm64 --output deploy/out
