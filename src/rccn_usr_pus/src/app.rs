@@ -20,7 +20,7 @@ impl PusApp {
         }
     }
 
-    pub fn register_service<S: PusService + 'static>(&mut self, mut service: S) {
+    pub fn register_service<S: PusService + 'static + Send>(&mut self, mut service: S) {
         let handler: ServiceHandler = Box::new(move |bytes, base| service.handle_tc_bytes(bytes, base));
         self.service_handlers.push(handler);
     }
@@ -37,11 +37,12 @@ impl PusApp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parameter_management_service::{service::ParameterManagementService, PusParameters};
+    use crate::parameter_management_service::{service::ParameterManagementService, PusParameters, ParameterError};
     use crossbeam::channel::bounded;
     use rccn_usr::service::util::create_pus_tc;
     use rccn_usr_pus_macros::PusParameters;
     use satrs::spacepackets::ecss::WritablePusPacket;
+    use xtce_rs::bitbuffer::{BitWriter, BitBuffer};
 
     #[derive(PusParameters)]
     struct TestParameters {
