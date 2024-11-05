@@ -2,10 +2,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 workspace:
-  image: docker:20.10.16
   stage: build
-  services:
-    - docker:20.10.16-dind
   script:
     - mkdir -p cross_compile/out/{arm64,amd64}
     - docker buildx build --platform linux/amd64 -f Dockerfile.cross --output cross_compile/out/amd64 .
