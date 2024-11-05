@@ -4,16 +4,7 @@
 FROM docker.io/rccn/usr-base AS build
 
 ARG USERNAME=rosdev
-ARG UID=1000
-ARG GID=1000
 ARG OVERLAY_WS=/home/rosdev/ros_ws_install
-
-# Create user and workspace
-RUN groupadd -g $GID $USERNAME \
-    && useradd -lm -u $UID -g $USERNAME -s /bin/bash $USERNAME \
-    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
-    && mkdir -p ${OVERLAY_WS} \
-    && chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}
 
 # Switch to user
 USER $USERNAME
