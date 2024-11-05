@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     let node = new_shared_ros2_node("vacuum_test_node", &"/")?;
 
     let mut transport_manager = TransportManager::new_with_ros2_node(node.clone())?;
-    transport_manager.add_virtual_channel(&VirtualChannel::new_ros2("bus_realtime", 0))?;
+    transport_manager.add_virtual_channel(&VirtualChannel::on_ros2_topic(0, "bus_realtime"))?;
     let ((vc_tx_map, mut vc_rx_map), transport_handles) = transport_manager.run();
 
     let mut stress_service = StressTestService::new(node.clone());

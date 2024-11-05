@@ -14,7 +14,7 @@ pub struct VirtualChannel {
 }
 
 impl VirtualChannel {
-    pub fn new_ros2(name: &str, id: VcId) -> Self {
+    pub fn on_ros2_topic(id: VcId, name: &str) -> Self {
         let tx_topic = format!("/vc/{name}/tx");
         let rx_topic = format!("/vc/{name}/rx");
 

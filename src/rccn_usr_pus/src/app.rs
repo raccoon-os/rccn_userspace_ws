@@ -1,9 +1,7 @@
 
 use crossbeam::channel::Select;
 use rccn_usr::{
-    service::{AcceptanceResult, CommandReplyBase, PusAppBase, PusService},
-    transport::TransportManager,
-    types::{Receiver, Sender, VcId},
+    config::VirtualChannel, service::{AcceptanceResult, CommandReplyBase, PusAppBase, PusService}, transport::{manager::TransportManagerError, ros2::SharedNode, TransportManager}, types::{Receiver, Sender, VcId}
 };
 
 type ServiceHandler = Box<dyn FnMut(&[u8], CommandReplyBase) -> AcceptanceResult + Send>;
@@ -23,11 +21,23 @@ impl PusApp {
         }
     }
 
+    pub fn new_with_ros2_node(apid: u16, node: SharedNode) -> Self {
+        Self {
+            transport_manager: TransportManager::new_with_ros2_node(node).unwrap(),
+            handlers: Vec::new(),
+            base: PusAppBase::new(apid, 0)
+        }
+    }
+
     pub fn register_service<S: PusService + 'static + Send>(&mut self, mut service: S) {
         let handler: ServiceHandler =
             Box::new(move |bytes, base| service.handle_tc_bytes(bytes, base));
 
         self.handlers.push((S::service(), handler));
+    }
+
+    pub fn add_virtual_channel(&mut self, vc: &VirtualChannel) -> Result<(), TransportManagerError> {
+        self.transport_manager.add_virtual_channel(vc)
     }
 
     fn handle_tc_internal(
@@ -53,24 +63,30 @@ impl PusApp {
     }
 
     pub fn run(mut self) {
+        // Run transports and get maps of VC IDs to TX/RX channels
         let ((vc_tx_map, vc_rx_map), _handles) = self.transport_manager.run();
 
-        let mut select = Select::new();
+        // Vec to track of the VC ID, TX channel and RX channel
+        // for each RX we add to the select operation
         let mut vc_info: Vec<(VcId, &Receiver, &Sender)> = Vec::new();
+
+        // Select object to wait on multiple RX channels
+        let mut select = Select::new();
+
         for (vc_id, rx) in vc_rx_map.iter() {
             // Add RX channel for this VC to the select object
             select.recv(rx);
 
-            // Keep track of the VC ID, TX channel and RX channel
-            // for each RX we add to the select operation
             let tx = vc_tx_map.get(vc_id).unwrap(); // TODO make tx side optional
             vc_info.push((*vc_id, rx, tx));
         }
 
         loop {
+            // Wait until a RX channel is available, get VC info
             let op = select.select();
             let (vc, rx, tx) = vc_info[op.index()];
 
+            // Attempt to receive from the channel
             match op.recv(rx) {
                 Ok(msg) => {
                     println!("PUS APP received command on vc id {vc}");
