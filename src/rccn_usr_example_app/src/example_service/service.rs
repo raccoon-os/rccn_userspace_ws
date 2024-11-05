@@ -25,4 +25,8 @@ impl PusService for ExampleService {
             })
         }
     }
+    
+    fn service() -> u8 {
+        1
+    }
 }

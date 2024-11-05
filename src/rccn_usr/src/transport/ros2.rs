@@ -17,6 +17,8 @@ use super::{TransportHandler, TransportReader, TransportResult, TransportWriter}
 pub enum Ros2TransportError {
     #[error("R2R error {0}")]
     R2RError(r2r::Error),
+    #[error("Invalid constructor arguments")]
+    InvalidArgs
 }
 
 #[allow(dead_code)] // ActionServer not yet implemented
@@ -43,18 +45,24 @@ pub fn new_shared_ros2_node(node_name: &str, namespace: &str) -> Result<SharedNo
 
 impl Ros2TransportHandler {
     pub fn new(node_name: &str) -> Result<Self, Ros2TransportError> {
-        Self::new_with_node(node_name, None)
+        Self::new_internal(None, Some(node_name))
     }
-    pub fn new_with_node(
-        node_name: &str,
+
+    pub fn new_with_node(node: SharedNode) -> Result<Self, Ros2TransportError> {
+        Self::new_internal(Some(node), None)
+    }
+
+    fn new_internal(
         node: Option<SharedNode>,
+        node_name: Option<&str>,
     ) -> Result<Self, Ros2TransportError> {
-        let node = match node {
-            Some(n) => n,
-            None => {
-                new_shared_ros2_node(node_name, &"/").map_err(Ros2TransportError::R2RError)?
-            }
-        };
+        let node = match (node, node_name) {
+            (Some(node), None) => Ok(node),
+            (None, Some(name)) => {
+                new_shared_ros2_node(name, &"/").map_err(Ros2TransportError::R2RError)
+            },
+            _ => Err(Ros2TransportError::InvalidArgs),
+        }?;
 
         Ok(Self {
             node,

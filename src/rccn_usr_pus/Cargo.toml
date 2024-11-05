@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+crossbeam = "0.8.4"
 rccn_usr = { version = "0.1.0", path = "../rccn_usr" }
 rccn_usr_pus_macros = { version = "0.1.0", path = "../rccn_usr_pus_macros" }
 satrs = "0.2.1"

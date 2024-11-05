@@ -170,6 +170,8 @@ pub trait ServiceCommand {
 pub trait PusService {
     type CommandT: ServiceCommand;
 
+    fn service() -> u8;
+
     fn handle_tc(&mut self, tc: AcceptedTc, cmd: Self::CommandT) -> AcceptanceResult;
 
     fn handle_tc_bytes(&mut self, bytes: &[u8], mut base: CommandReplyBase) -> AcceptanceResult {
@@ -195,7 +197,7 @@ pub trait PusService {
         }
 
         // Check if the TC is destined for this service
-        if pus_tc.service() != base.service {
+        if pus_tc.service() != Self::service() {
             // It's not. Return early but don't send an acceptance failure
             // (there may be other services on this APID) that can respond to this.
             return Err(AcceptanceError::UnknownService(pus_tc.service()));

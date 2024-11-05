@@ -45,7 +45,7 @@ impl TransportManager {
     pub fn new_with_ros2_node(node: SharedNode) -> Result<Self, TransportManagerError> {
         Ok(Self {
             udp_handler: UdpTransportHandler::new(),
-            ros2_handler: Ros2TransportHandler::new_with_node("", Some(node))?,
+            ros2_handler: Ros2TransportHandler::new_with_node(node)?,
             vc_tx_map: VirtualChannelTxMap::new(),
             vc_rx_map: VirtualChannelRxMap::new(),
         })

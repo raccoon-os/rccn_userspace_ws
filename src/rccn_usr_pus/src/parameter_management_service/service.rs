@@ -8,8 +8,6 @@
 //! which provides methods to serialize/deserialize parameter values to/from bytes.
 //! Each parameter is identified by a unique 32-bit hash.
 
-use std::sync::{Arc, Mutex};
-
 use rccn_usr::
     service::{
         AcceptanceResult, AcceptedTc, CommandExecutionStatus, PusService,
@@ -21,7 +19,7 @@ use xtce_rs::bitbuffer::{BitBuffer, BitWriter};
 
 use super::{
     command::{report_parameter_values, set_parameter_values, Command},
-    ParameterError, PusParameters, SharedPusParameters,
+    ParameterError, SharedPusParameters,
 };
 
 /// Implementation of ECSS PUS Service 20 - Parameter Management Service
@@ -132,6 +130,10 @@ impl ParameterManagementService {
 
 impl PusService for ParameterManagementService {
     type CommandT = Command;
+    
+    fn service() -> u8 {
+        20
+    }
 
     fn handle_tc(&mut self, mut tc: AcceptedTc, cmd: Self::CommandT) -> AcceptanceResult {
         let base = tc.base.clone();
