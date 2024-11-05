@@ -26,9 +26,11 @@ RUN pip install uv \
         bitstruct \
         spacepackets
 
+# Copy source
+COPY ./src $OVERLAY_WS/src
+
 # Build workspace
-RUN --mount=type=bind,target=$OVERLAY_WS/src,source=./src \
-    . /opt/ros/humble/setup.sh && \
+RUN . /opt/ros/humble/setup.sh && \
     . .venv/bin/activate && \
     touch .venv/COLCON_IGNORE && \
     colcon build \
