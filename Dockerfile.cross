@@ -28,6 +28,7 @@ RUN pip install uv \
 
 # Copy source
 COPY ./src $OVERLAY_WS/src
+RUN chown -R $USERNAME $OVERLAY_WS
 
 # Build workspace
 RUN . /opt/ros/humble/setup.sh && \
