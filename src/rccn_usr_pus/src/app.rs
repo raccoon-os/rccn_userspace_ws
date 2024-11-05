@@ -7,18 +7,13 @@ use crate::parameter_management_service::{PusParameters, SharedPusParameters};
 
 pub struct PusApp<'a> {
     transport_manager: TransportManager,
-    node: SharedNode,
-    parameters: SharedPusParameters,
-
     services: Vec<&'a dyn PusService>
 }
 
 impl PusApp {
-    pub fn new(node: SharedNode, parameters: SharedPusParameters) -> Self {
+    pub fn new() -> Self {
         Self {
             transport_manager: TransportManager::new("foo".into()).unwrap(),
-            parameters: parameters,
-            node: node
         }
     }
 }
