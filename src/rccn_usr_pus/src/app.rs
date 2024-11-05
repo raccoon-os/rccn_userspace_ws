@@ -5,7 +5,7 @@ use rccn_usr::{
     transport::TransportManager,
 };
 
-type ServiceHandler = Box<dyn Fn(&[u8], CommandReplyBase) -> AcceptanceResult + Send>;
+type ServiceHandler = Box<dyn FnMut(&[u8], CommandReplyBase) -> AcceptanceResult + Send>;
 
 pub struct PusApp {
     transport_manager: TransportManager,
@@ -26,9 +26,9 @@ impl PusApp {
     }
 
     // Function to handle incoming TC - calls each registered service handler
-    pub fn handle_tc(&self, bytes: &[u8], base: CommandReplyBase) -> Vec<AcceptanceResult> {
+    pub fn handle_tc(&mut self, bytes: &[u8], base: CommandReplyBase) -> Vec<AcceptanceResult> {
         self.service_handlers
-            .iter()
+            .iter_mut()
             .map(|handler| handler(bytes, base.clone()))
             .collect()
     }
