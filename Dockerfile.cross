@@ -27,8 +27,7 @@ RUN pip install uv \
         spacepackets
 
 # Copy source
-COPY ./src $OVERLAY_WS/src
-RUN chown -R $USERNAME $OVERLAY_WS
+COPY --chown=$USERNAME ./src $OVERLAY_WS/src
 
 # Build workspace
 RUN . /opt/ros/humble/setup.sh && \
