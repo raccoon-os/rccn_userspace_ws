@@ -1,3 +1,6 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
 workspace:
   image: docker:20.10.16
   stage: build
