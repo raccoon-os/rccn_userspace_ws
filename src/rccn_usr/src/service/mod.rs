@@ -33,30 +33,24 @@ use satrs::{
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
-pub struct CommandReplyBase {
+pub struct PusAppBase {
     pub apid: u16,
-    pub service: u8,
     pub verification_reporter: VerificationReporter,
-    pub tx: Sender,
     pub timestamp_helper: TimestampHelper,
     pub component_id: ComponentId,
     pub msg_counter: Arc<Mutex<u16>>,
 }
 
-impl CommandReplyBase {
+impl PusAppBase {
     pub fn new(
         apid: u16,
-        service: u8,
         component_id: ComponentId,
-        tx: Sender,
     ) -> Self {
         let verification_reporter_cfg =
             VerificationReporterCfg::new(apid, 1, 1, 100).expect("Invalid APID");
 
         Self {
             apid,
-            service,
-            tx: tx.clone(),
             timestamp_helper: TimestampHelper::new(),
             verification_reporter: VerificationReporter::new(
                 component_id,
@@ -67,10 +61,27 @@ impl CommandReplyBase {
         }
     }
 
+    pub fn new_reply(&self, service: u8, tx: Sender) -> CommandReplyBase {
+        CommandReplyBase {
+            app: self.clone(),
+            service,
+            tx
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct CommandReplyBase {
+    pub app: PusAppBase,
+    pub service: u8,
+    pub tx: Sender,
+}
+
+impl CommandReplyBase {
     pub fn get_tm_sender(&self) -> RccnEcssTmSender {
         RccnEcssTmSender {
             channel: self.tx.clone(),
-            msg_counter: self.msg_counter.clone(),
+            msg_counter: self.app.msg_counter.clone(),
         }
     }
 
@@ -88,7 +99,7 @@ impl CommandReplyBase {
         // TODO: destination ID not used
         PusTmCreator::new(
             SpHeader::new(
-                PacketId::new(PacketType::Tm, true, self.apid),
+                PacketId::new(PacketType::Tm, true, self.app.apid),
                 PacketSequenceCtrl::new(SequenceFlags::Unsegmented, 0),
                 0,
             ),
@@ -97,7 +108,7 @@ impl CommandReplyBase {
                 subservice,
                 0,
                 0,
-                self.timestamp_helper.stamp(),
+                self.app.timestamp_helper.stamp(),
             ),
             src_data,
             true,
@@ -176,7 +187,7 @@ pub trait PusService {
 
     fn handle_tc_bytes(&mut self, bytes: &[u8], mut base: CommandReplyBase) -> AcceptanceResult {
         // ST[01] verification util
-        let mut reporter = base.verification_reporter.clone();
+        let mut reporter = base.app.verification_reporter.clone();
 
         let pus_tc = match PusTcReader::new(&bytes) {
             Err(e) => {
@@ -188,10 +199,10 @@ pub trait PusService {
         }?;
 
         let token = reporter.add_tc(&pus_tc);
-        base.timestamp_helper.update_from_now();
+        base.app.timestamp_helper.update_from_now();
 
         // Check if the TC is destined for this APID
-        if pus_tc.sp_header().apid() != base.apid {
+        if pus_tc.sp_header().apid() != base.app.apid {
             // It's not. Return early but don't send an acceptance failure.
             return Err(AcceptanceError::UnknownApid(pus_tc.sp_header().apid()));
         }
@@ -218,7 +229,7 @@ pub trait PusService {
             err
         })?;
 
-        base.timestamp_helper.update_from_now();
+        base.app.timestamp_helper.update_from_now();
 
         // Send TC accepted telemetry, get TC accepted token
         let accepted_token = base.send_acceptance_success(token).map_err(|err| {
@@ -281,7 +292,7 @@ impl AcceptedTc {
             Ok(tm_data) => {
                 self.base.send_completion_success(started_token).unwrap();
 
-                self.base.timestamp_helper.update_from_now();
+                self.base.app.timestamp_helper.update_from_now();
                 let tm = self.base.create_tm(tm_data.subservice, &tm_data.data);
                 self.base.send_tm(tm).expect("could not send TM response");
 

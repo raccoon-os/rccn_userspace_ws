@@ -74,6 +74,10 @@ async fn send_stress_test_goal(
 impl PusService for StressTestService {
     type CommandT = StressServiceCommand;
 
+    fn service() -> u8 {
+        42
+    }
+
     fn handle_tc(&mut self, tc: AcceptedTc, cmd: Self::CommandT) -> AcceptanceResult {
         println!("Stress service command {:?}", cmd);
 

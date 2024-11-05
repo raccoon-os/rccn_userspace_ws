@@ -7,8 +7,8 @@ macro_rules! impl_verification_sender {
                 token:  $state_in,
             ) -> Result<$state_out, EcssTmtcError> {
                 let tm_sender = self.get_tm_sender();
-                let reporter = self.verification_reporter.clone();
-                let timestamp = self.timestamp_helper.stamp();
+                let reporter = self.app.verification_reporter.clone();
+                let timestamp = self.app.timestamp_helper.stamp();
 
                 reporter.[<$name _success>](&tm_sender, token, timestamp)
             }
@@ -20,8 +20,8 @@ macro_rules! impl_verification_sender {
                 failure_data: &[u8],
             ) -> Result<(), EcssTmtcError> {
                 let tm_sender = self.get_tm_sender();
-                let reporter = self.verification_reporter.clone();
-                let timestamp = self.timestamp_helper.stamp();
+                let reporter = self.app.verification_reporter.clone();
+                let timestamp = self.app.timestamp_helper.stamp();
 
                 reporter.[<$name _failure>](
                     &tm_sender,

@@ -1,8 +1,7 @@
-use std::collections::HashMap;
 
 use crossbeam::channel::Select;
 use rccn_usr::{
-    service::{AcceptanceResult, CommandReplyBase, PusService},
+    service::{AcceptanceResult, CommandReplyBase, PusAppBase, PusService},
     transport::TransportManager,
     types::{Receiver, Sender, VcId},
 };
@@ -12,7 +11,7 @@ type ServiceHandler = Box<dyn FnMut(&[u8], CommandReplyBase) -> AcceptanceResult
 pub struct PusApp {
     transport_manager: TransportManager,
     handlers: Vec<(u8, ServiceHandler)>,
-    apid: u16,
+    base: PusAppBase,
 }
 
 impl PusApp {
@@ -20,14 +19,11 @@ impl PusApp {
         Self {
             transport_manager: TransportManager::new(ros2_node_prefix).unwrap(),
             handlers: Vec::new(),
-            apid,
+            base: PusAppBase::new(apid, 0),
         }
     }
 
-    pub fn register_service<S: PusService + 'static + Send>(
-        &mut self,
-        mut service: S,
-    ) {
+    pub fn register_service<S: PusService + 'static + Send>(&mut self, mut service: S) {
         let handler: ServiceHandler =
             Box::new(move |bytes, base| service.handle_tc_bytes(bytes, base));
 
@@ -35,8 +31,8 @@ impl PusApp {
     }
 
     fn handle_tc_internal(
+        app_base: &PusAppBase,
         handlers: &mut Vec<(u8, ServiceHandler)>,
-        apid: u16,
         data: &[u8],
         tx: Sender,
     ) -> Vec<AcceptanceResult> {
@@ -44,8 +40,8 @@ impl PusApp {
             .iter_mut()
             // Call each service handler
             .map(|(service_id, handler)| {
-                let base = CommandReplyBase::new(apid, *service_id, 0, tx.clone());
-                handler(data, base)
+                let reply_base = app_base.new_reply(*service_id, tx.clone());
+                handler(data, reply_base)
             })
             // Gather all the AcceptanceResults
             .collect()
@@ -53,14 +49,14 @@ impl PusApp {
 
     // Mainly for testing purposes
     pub fn handle_tc(&mut self, data: &[u8], tx: Sender) -> Vec<AcceptanceResult> {
-        Self::handle_tc_internal(&mut self.handlers, self.apid, data, tx)
+        Self::handle_tc_internal(&self.base, &mut self.handlers, data, tx)
     }
 
     pub fn run(mut self) {
         let ((vc_tx_map, vc_rx_map), _handles) = self.transport_manager.run();
 
         let mut select = Select::new();
-        let mut index: Vec<(VcId, &Receiver, &Sender)> = Vec::new();
+        let mut vc_info: Vec<(VcId, &Receiver, &Sender)> = Vec::new();
         for (vc_id, rx) in vc_rx_map.iter() {
             // Add RX channel for this VC to the select object
             select.recv(rx);
@@ -68,18 +64,18 @@ impl PusApp {
             // Keep track of the VC ID, TX channel and RX channel
             // for each RX we add to the select operation
             let tx = vc_tx_map.get(vc_id).unwrap(); // TODO make tx side optional
-            index.push((*vc_id, rx, tx));
+            vc_info.push((*vc_id, rx, tx));
         }
 
         loop {
             let op = select.select();
-            let (vc, rx, tx) = index[op.index()];
+            let (vc, rx, tx) = vc_info[op.index()];
 
             match op.recv(rx) {
                 Ok(msg) => {
                     println!("PUS APP received command on vc id {vc}");
 
-                    Self::handle_tc_internal(&mut self.handlers, self.apid, &msg, tx.clone());
+                    Self::handle_tc_internal(&self.base, &mut self.handlers, &msg, tx.clone());
 
                     // TODO: check that exactly one service handled the command succesfully
                 }

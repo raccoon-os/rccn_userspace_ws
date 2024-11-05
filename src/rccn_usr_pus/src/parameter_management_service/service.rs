@@ -177,7 +177,7 @@ mod tests {
 
     use crossbeam::channel::bounded;
     use rccn_usr::{
-        service::{util::create_pus_tc, CommandExecutionStatus, CommandReplyBase, PusService},
+        service::{util::create_pus_tc, PusAppBase, CommandExecutionStatus, CommandReplyBase, PusService},
         types::Receiver,
     };
     use rccn_usr_pus_macros::PusParameters;
@@ -319,7 +319,11 @@ mod tests {
                 tm_rx,
                 service,
                 parameters: shared_parameters,
-                reply_base: CommandReplyBase::new(1, 20, 0, tm_tx),
+                reply_base: CommandReplyBase {
+                    app: PusAppBase::new(1, 0),
+                    service: 20,
+                    tx: tm_tx
+                },
             }
         }
 
