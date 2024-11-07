@@ -75,7 +75,7 @@ impl PusService for StressTestService {
     type CommandT = StressServiceCommand;
 
     fn service() -> u8 {
-        42
+        142
     }
 
     fn handle_tc(&mut self, tc: AcceptedTc, cmd: Self::CommandT) -> AcceptanceResult {
