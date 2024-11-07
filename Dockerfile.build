@@ -20,9 +20,8 @@ RUN . ~/.cargo/env && \
         --packages-up-to vacuum_test_node
 
 # Fix paths for deployment
-RUN sed -i "s@WS/.venv/bin/python3@/usr/bin/env python@" $(find . -type f -wholename "./install*/lib/*") && \
-    sed -i "s@COLCON_CURRENT_PREFIX=\"/opt/ros/humble\"@COLCON_CURRENT_PREFIX=\"/usr/opt/ros/humble\"@" ./install/setup.sh && \
-    rm .venv/bin/python
+RUN sed -i "s@/home/rosdev/.venv/bin/python3@/usr/bin/env python@" $(find . -type f -wholename "./install*/lib/*") && \
+    sed -i "s@COLCON_CURRENT_PREFIX=\"/opt/ros/humble\"@COLCON_CURRENT_PREFIX=\"/usr/opt/ros/humble\"@" ./install/setup.sh
 
 # Create minimal output image
 FROM scratch
