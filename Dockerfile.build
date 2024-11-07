@@ -14,8 +14,7 @@ COPY --chown=$USERNAME ./src $WS/src
 # Build workspace
 RUN . ~/.cargo/env && \
     . /opt/ros/humble/setup.sh && \
-    . .venv/bin/activate && \
-    touch .venv/COLCON_IGNORE && \
+    . /home/rosdev/.venv/bin/activate && \
     colcon build \
         --event-handlers console_direct+ \
         --packages-up-to vacuum_test_node
