@@ -1,7 +1,6 @@
 {
     "name": "RACCOON OS - ROS 2 Humble + Rust",
     "remoteUser": "rosdev",
-    "initializeCommand": "chmod +x ./devcontainer.sh && ./devcontainer.sh --build-dev",
     /*
     "build": {
         "dockerfile": "Dockerfile",
@@ -14,7 +13,7 @@
         "target": "development"
     },
     */
-    "image": "rccn-usr-dev",
+    "image": "docker.io/rccn/usr-dev",
     /*
     "dockerComposeFile": "docker-compose.yml",
     "service": "thermal-test",
