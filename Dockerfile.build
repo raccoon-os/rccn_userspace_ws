@@ -1,0 +1,30 @@
+FROM docker.io/rccn/usr-dev AS build
+
+ARG USERNAME=rosdev
+ARG WS=/home/rosdev/ros2_ws
+
+# Switch to user
+USER $USERNAME
+RUN mkdir -p $OVERLAY_WS/src
+WORKDIR $OVERLAY_WS
+
+# Copy source
+COPY --chown=$USERNAME ./src $OVERLAY_WS/src
+
+# Build workspace
+RUN . ~/.cargo/env && \
+    . /opt/ros/humble/setup.sh && \
+    . .venv/bin/activate && \
+    touch .venv/COLCON_IGNORE && \
+    colcon build \
+        --event-handlers console_direct+ \
+        --packages-up-to vacuum_test_node
+
+# Fix paths for deployment
+RUN sed -i "s@$OVERLAY_WS/.venv/bin/python3@/usr/bin/env python@" $(find . -type f -wholename "./install*/lib/*") && \
+    sed -i "s@COLCON_CURRENT_PREFIX=\"/opt/ros/humble\"@COLCON_CURRENT_PREFIX=\"/usr/opt/ros/humble\"@" ./install/setup.sh && \
+    rm .venv/bin/python
+
+# Create minimal output image
+FROM scratch
+COPY --from=build /home/rosdev/ros_ws_install/install .
