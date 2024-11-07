@@ -7,6 +7,24 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug executable 'vacuum_test_node'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=vacuum_test_node",
+                    "--package=vacuum_test_node"
+                ],
+                "filter": {
+                    "name": "vacuum_test_node",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}/src/vacuum_test_node"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug executable 'rccn_usr_comm'",
             "cargo": {
                 "args": [
