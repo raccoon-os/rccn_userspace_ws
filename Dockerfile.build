@@ -15,6 +15,7 @@ COPY --chown=$USERNAME ./src $WS/src
 RUN . ~/.cargo/env && \
     . /opt/ros/humble/setup.sh && \
     . /home/rosdev/.venv/bin/activate && \
+    rm -f $(find build/ -name ".cargo-lock") && \ # Prevent previous failed builds from locking up the build directories
     colcon build \
         --event-handlers console_direct+ \
         --packages-up-to vacuum_test_node
