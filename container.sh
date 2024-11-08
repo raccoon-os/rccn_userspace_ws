@@ -19,6 +19,7 @@ fi
 
 # Run the command in container
 docker run --rm -it \
+    --platform="${RCCN_USR_DEV_PLATFORM}" \
     --net=host \
     -v "$(pwd):$WORKSPACE" \
     -w "$WORKSPACE" \
