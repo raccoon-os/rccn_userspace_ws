@@ -4,6 +4,7 @@ variables:
 workspace:
   stage: build
   script:
+    - docker pull --platform=linux/arm64 docker.io/rccn/usr-dev
     - ./container.sh --platform=linux/arm64 ./build.sh
 
   artifacts:

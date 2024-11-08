@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set -x
 
 # Load environment variables
 source .devenv
@@ -8,10 +9,6 @@ source .devenv
 PLATFORM="${RCCN_USR_DEV_PLATFORM}"  # Default from .devenv
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --platform)
-            PLATFORM="$2"
-            shift 2
-            ;;
         --platform=*)
             PLATFORM="${1#*=}"
             shift
@@ -44,10 +41,10 @@ fi
 
 # Run the command in container
 docker run --rm $INTERACTIVE_FLAGS \
-    --platform="${PLATFORM}" \
+    --platform="$PLATFORM" \
     --net=host \
     -v "$(pwd):$WORKSPACE" \
     -w "$WORKSPACE" \
     -u "$USERNAME" \
     "$CONTAINER_IMAGE" \
-    "$@"
+    bash -c "source ~/.rccnenv && $@"
