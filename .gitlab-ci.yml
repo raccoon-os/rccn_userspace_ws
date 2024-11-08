@@ -1,11 +1,6 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-default:
-  hooks:
-    pre_get_sources_script:
-      - podman unshare chown -R $(id -u):$(id -g) .
-
 workspace:
   stage: build
   script:

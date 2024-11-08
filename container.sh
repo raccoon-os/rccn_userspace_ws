@@ -40,13 +40,15 @@ else
 fi
 
 # Run the command in container
-podman run --rm $INTERACTIVE_FLAGS \
+podman run \
+    --rm \
+    $INTERACTIVE_FLAGS \
     --platform="$PLATFORM" \
     --net=host \
     -v "$(pwd):$WORKSPACE" \
     -w "$WORKSPACE" \
-    -u "$USERNAME" \
+    -u "$(id -u):$(id -g)" \
     --userns=keep-id \
     --env "HOME=/home/rosdev" \
     "$CONTAINER_IMAGE" \
-    bash --init-file /home/rosdev/.rccnenv -c "$*"
+    bash -c "$*"
