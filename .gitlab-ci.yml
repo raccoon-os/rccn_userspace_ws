@@ -4,11 +4,8 @@ variables:
 workspace:
   stage: build
   script:
-    - mkdir -p build/out/{arm64,amd64}
-    - docker buildx build --platform linux/amd64 -f Dockerfile.build --output build/out/amd64 .
-    - docker buildx build --platform linux/arm64 -f Dockerfile.build --output build/out/arm64 .
+    - ./container.sh --platform=linux/arm64 ./build.sh
 
   artifacts:
     paths:
-      - build/out/amd64
-      - build/out/arm64
+      - build/install
