@@ -47,4 +47,4 @@ docker run --rm $INTERACTIVE_FLAGS \
     -w "$WORKSPACE" \
     -u "$USERNAME" \
     "$CONTAINER_IMAGE" \
-    bash -c "source ~/.rccnenv && $@"
+    bash -c "$@"
