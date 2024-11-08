@@ -301,7 +301,7 @@ dependencies = [
 [[package]]
 name = "ccsds_protocols"
 version = "0.1.0"
-source = "git+ssh://git@gitlab.com/raccoon-os/ccsds-protocols-rs.git#599c3244c927f9ff1fba94a816b7ab131d594790"
+source = "git+https://gitlab.com/rccn/ccsds-protocols-rs#599c3244c927f9ff1fba94a816b7ab131d594790"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -1441,6 +1441,7 @@ dependencies = [
  "crossbeam-channel",
  "futures",
  "rccn_usr",
+ "rccn_usr_pus",
  "satrs",
  "spacepackets 0.12.0",
 ]
@@ -2204,8 +2205,4 @@ version = "0.1.0"
 
 [[patch.unused]]
 name = "rccn_usr_comm"
-version = "0.1.0"
-
-[[patch.unused]]
-name = "vacuum_test_node"
 version = "0.1.0"
