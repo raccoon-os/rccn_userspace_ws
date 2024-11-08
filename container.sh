@@ -35,8 +35,15 @@ else
     CONTAINER_IMAGE="$RCCN_USR_DEV_CONTAINER_IMAGE"
 fi
 
+# Check if we're running interactively
+if [ -t 0 ]; then
+    INTERACTIVE_FLAGS="-it"
+else
+    INTERACTIVE_FLAGS=""
+fi
+
 # Run the command in container
-docker run --rm -it \
+docker run --rm $INTERACTIVE_FLAGS \
     --platform="${PLATFORM}" \
     --net=host \
     -v "$(pwd):$WORKSPACE" \
