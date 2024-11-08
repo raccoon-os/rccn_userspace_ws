@@ -40,11 +40,13 @@ else
 fi
 
 # Run the command in container
-docker run --rm $INTERACTIVE_FLAGS \
+podman run --rm $INTERACTIVE_FLAGS \
     --platform="$PLATFORM" \
     --net=host \
     -v "$(pwd):$WORKSPACE" \
     -w "$WORKSPACE" \
     -u "$USERNAME" \
+    --userns=keep-id \
+    --env "HOME=/home/rosdev" \
     "$CONTAINER_IMAGE" \
     bash -c "$*"
