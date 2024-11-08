@@ -49,4 +49,4 @@ podman run --rm $INTERACTIVE_FLAGS \
     --userns=keep-id \
     --env "HOME=/home/rosdev" \
     "$CONTAINER_IMAGE" \
-    bash -c "$*"
+    bash --init-file /home/rosdev/.rccnenv -c "$*"
