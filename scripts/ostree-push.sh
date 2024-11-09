@@ -13,10 +13,10 @@ mkdir -p ./ostree_root/usr/lib/$PACKAGE_NAME/
 cp -r ./install ./ostree_root/usr/lib/$PACKAGE_NAME/
 
 # Add the build output files
-REF=$(ostree commit \
+ostree commit \
     --repo=repo \
-    --branch="rccn_usr_ws/$PLATFORM/$BRANCH" \
-    --tree=dir=./ostree_root)
+    --branch="$PACKAGE_NAME/$PLATFORM/$BRANCH" \
+    --tree=dir=./ostree_root
 
 # Push to server
 ostree-push \
