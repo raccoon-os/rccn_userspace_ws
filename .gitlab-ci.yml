@@ -4,9 +4,9 @@ variables:
 workspace:
   stage: build
   script:
-    - rm -f $(find . -name "*.cargo-lock")
+    - rm -rf build install 
     - ./container.sh --platform=linux/arm64 ./build.sh
 
   artifacts:
     paths:
-      - build/install
+      - install/
