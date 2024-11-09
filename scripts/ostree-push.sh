@@ -21,4 +21,4 @@ ostree commit \
 # Push to server
 ostree-push \
     --repo repo \
-    raccoondeploy@deploy.rccn.space:/home/raccoondeploy/www/mission/ostree_repo
+    builder@localhost:/home/builder/meta-raccoon-mission/build/tmp/deploy/images/phyboard-pollux-imx8mp-3/ostree_repo

@@ -2206,3 +2206,7 @@ version = "0.1.0"
 [[patch.unused]]
 name = "rccn_usr_comm"
 version = "0.1.0"
+
+[[patch.unused]]
+name = "vacuum_test_node"
+version = "0.1.0"

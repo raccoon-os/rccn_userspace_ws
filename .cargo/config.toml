@@ -1,1 +1,8 @@
-[patch.crates-io]
+[patch.crates-io.rccn_usr]
+path = "/home/rosdev/ros2_ws/install/rccn_usr/share/rccn_usr/rust"
+
+[patch.crates-io.vacuum_test_node]
+path = "/home/rosdev/ros2_ws/install/vacuum_test_node/share/vacuum_test_node/rust"
+
+[patch.crates-io.rccn_usr_comm]
+path = "/home/rosdev/ros2_ws/install/rccn_usr_comm/share/rccn_usr_comm/rust"
