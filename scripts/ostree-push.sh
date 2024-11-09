@@ -4,9 +4,6 @@ PACKAGE_NAME="rccn_usr_ws"
 PLATFORM="$1"
 BRANCH="$2"
 
-# Ensure ostree-push is installed
-pip install ostree-push
-
 ostree init \
     --repo=repo \
     --mode=bare-user
@@ -23,4 +20,5 @@ ostree commit \
 
 # Push to server
 ostree-push \
+    --repo repo \
     raccoondeploy@deploy.rccn.space:/home/raccoondeploy/www/mission/ostree_repo
