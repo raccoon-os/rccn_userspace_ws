@@ -10,9 +10,11 @@
   <license>GPLv3</license>
 
   <build_depend>std_msgs</build_depend>
-  <build_depend>rccn_usr</build_depend>
+  <build_depend>rccn_usr_msgs</build_depend>
+  <build_depend>thermal_test_msgs</build_depend>
 
   <exec_depend>std_msgs</exec_depend>
+  <exec_depend>rccn_usr_msgs</exec_depend>
   <exec_depend>thermal_test_msgs</exec_depend>
 
   <export>
