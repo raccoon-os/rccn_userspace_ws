@@ -5,7 +5,7 @@ PLATFORM="$1"
 BRANCH="$2"
 
 # Ensure ostree-push is installed
-~/.local/bin/uv pip install ostree-push
+pip install ostree-push
 
 ostree init \
     --repo=repo \
@@ -13,12 +13,11 @@ ostree init \
 
 # Create the desired filesystem structure
 mkdir -p ./ostree_root/usr/lib/$PACKAGE_NAME/
-cp -r build/install ./ostree_root/usr/lib/$PACKAGE_NAME/
+cp -r ./install ./ostree_root/usr/lib/$PACKAGE_NAME/
 
 # Add the build output files
 ostree commit \
     --repo=repo \
-    --commit  \
     --branch="rccn_usr_ws/$PLATFORM/$BRANCH" \
     --tree=dir=./ostree_root
 
