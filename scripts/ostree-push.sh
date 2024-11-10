@@ -4,6 +4,10 @@ PACKAGE_NAME="rccn_usr_ws"
 PLATFORM="$1"
 BRANCH="$2"
 
+# Always start from a fresh ostree repo.
+# We only push one commit at a time, the receiver deduplicates.
+rm -rf repo
+
 ostree init \
     --repo=repo \
     --mode=archive
@@ -21,5 +25,5 @@ ostree commit \
 # Push to server
 ostree-push \
     --repo repo \
-    builder@localhost:/home/builder/meta-raccoon-mission/build/tmp/deploy/images/phyboard-pollux-imx8mp-3/ostree_repo \
+    deploy@deploy.rccn.space:repos/raccoon-mission \
     $REF
