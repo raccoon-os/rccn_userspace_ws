@@ -26,4 +26,5 @@ ostree commit \
 ostree-push \
     --repo repo \
     deploy@deploy.rccn.space:repos/raccoon-mission \
+    -p 2233 \
     $REF
