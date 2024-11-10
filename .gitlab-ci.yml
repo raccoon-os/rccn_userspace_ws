@@ -4,7 +4,7 @@ variables:
 workspace:
   stage: build
   script:
-    - rm -rf build install 
+    - git clean -fdx
     - ./container.sh --platform=$PLATFORM ./build.sh
     - ./scripts/ostree-push.sh $PLATFORM $CI_COMMIT_REF_NAME
   parallel:
