@@ -4,17 +4,17 @@ PACKAGE_NAME="rccn_usr_ws"
 PLATFORM="$1"
 BRANCH="$2"
 
-# Always start from a fresh ostree repo.
-# We only push one commit at a time, the receiver deduplicates.
-rm -rf repo
-
-ostree init \
-    --repo=repo \
-    --mode=archive
-
 # Create the desired filesystem structure
+rm -rf ostree_root
 mkdir -p ./ostree_root/usr/lib/$PACKAGE_NAME/
 cp -r ./install ./ostree_root/usr/lib/$PACKAGE_NAME/
+
+# Create the ostree repo if it does not exist
+if [ ! -f ./repo/config ]; then
+    ostree init \
+        --repo=repo \
+        --mode=archive
+fi
 
 # Add the build output files
 ostree commit \
