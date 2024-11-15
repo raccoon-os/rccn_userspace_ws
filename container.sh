@@ -7,10 +7,15 @@ source .devenv
 
 # Parse command line arguments
 PLATFORM="${RCCN_USR_DEV_PLATFORM}"  # Default from .devenv
+IMAGE="${RCCN_USR_DEV_CONTAINER_IMAGE}"
 while [[ $# -gt 0 ]]; do
     case $1 in
         --platform=*)
             PLATFORM="${1#*=}"
+            shift
+            ;;
+        --image=*)
+            IMAGE="${1#*=}"
             shift
             ;;
         *)
@@ -27,9 +32,7 @@ WORKSPACE="/home/rosdev/ros2_ws"
 if [ -n "${RCCN_USR_DEV_CONTAINER_FILE:-}" ]; then
     echo "Building container from $RCCN_USR_DEV_CONTAINER_FILE..."
     docker build -t local-dev-container -f "$RCCN_USR_DEV_CONTAINER_FILE" .
-    CONTAINER_IMAGE="local-dev-container"
-else
-    CONTAINER_IMAGE="$RCCN_USR_DEV_CONTAINER_IMAGE"
+    IMAGE="local-dev-container"
 fi
 
 # Check if we're running interactively
@@ -40,15 +43,11 @@ else
 fi
 
 # Run the command in container
-podman run \
-    --rm \
-    $INTERACTIVE_FLAGS \
+docker run --rm $INTERACTIVE_FLAGS \
     --platform="$PLATFORM" \
     --net=host \
     -v "$(pwd):$WORKSPACE" \
     -w "$WORKSPACE" \
-    -u "$(id -u):$(id -g)" \
-    --userns=keep-id \
-    --env "HOME=/home/rosdev" \
-    "$CONTAINER_IMAGE" \
+    -u "$USERNAME" \
+    "$IMAGE" \
     bash -c "$*"

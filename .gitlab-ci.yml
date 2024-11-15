@@ -1,16 +1,24 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
-workspace:
+workspace-x86:
   stage: build
   script:
     - git clean -fdx
     - ./container.sh --platform=$PLATFORM ./build.sh
     - ./scripts/ostree-push.sh $PLATFORM $CI_COMMIT_REF_NAME
-  parallel:
-    matrix:
-      - PLATFORM: ["linux/amd64", "linux/arm64"]
 
   artifacts:
     paths:
       - install/
+
+workspace-arm64:
+  stage: build
+  script:
+    - git clean -fdx
+    - ./container.sh --image=rccn/usr-cross-compile ./cross-compile.sh
+    #- ./scripts/ostree-push.sh $PLATFORM $CI_COMMIT_REF_NAME
+
+  artifacts:
+    paths:
+      - install/target
