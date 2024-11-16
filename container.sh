@@ -49,8 +49,8 @@ fi
 
 CONTAINER_ENGINE_ARGS=""
 # Container-engine-specific arguments
-if [[ "$CONTAINER_ENGINE" == "podman" ]]; then
-    CONTAINER_ENGINE_ARGS = "--userns=keep-id"
+if [ "$CONTAINER_ENGINE" == "podman" ]; then
+    CONTAINER_ENGINE_ARGS="--userns=keep-id"
 fi
 
 # Run the command in container
