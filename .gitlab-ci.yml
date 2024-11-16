@@ -6,8 +6,9 @@ workspace-x86:
   script:
     - git clean -fdx
 
-    - ./container.sh \
-        --engine=podman \
+    - |
+      ./container.sh
+        --engine=podman
         ./build.sh
 
     - ./scripts/ostree-push.sh $PLATFORM $CI_COMMIT_REF_NAME
@@ -21,10 +22,11 @@ workspace-arm64:
   script:
     - git clean -fdx
 
-    - ./container.sh \
-      --engine=podman \
-      --image=docker.io/rccn/usr-cross-compile \
-      ./cross-compile.sh
+    - |
+      ./container.sh
+        --engine=podman
+        --image=docker.io/rccn/usr-cross-compile
+        ./cross-compile.sh
 
     #- ./scripts/ostree-push.sh $PLATFORM $CI_COMMIT_REF_NAME
 
