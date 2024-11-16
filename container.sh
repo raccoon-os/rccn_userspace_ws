@@ -7,7 +7,7 @@ source .devenv
 
 # Parse command line arguments
 PLATFORM="${RCCN_USR_DEV_PLATFORM:-linux/amd64}"  # Default from .devenv
-IMAGE="${RCCN_USR_DEV_CONTAINER_IMAGE}"
+IMAGE="${RCCN_USR_DEV_CONTAINER_IMAGE:-docker.io/rccn/usr-dev}"
 CONTAINER_ENGINE="docker"
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -50,7 +50,13 @@ fi
 CONTAINER_ENGINE_ARGS=""
 # Container-engine-specific arguments
 if [ "$CONTAINER_ENGINE" == "podman" ]; then
-    CONTAINER_ENGINE_ARGS="--userns=keep-id"
+    CONTAINER_ENGINE_ARGS="\
+        -u $(id -u):$(id -g) --userns=keep-id
+    "
+else
+    CONTAINER_ENGINE_ARGS="\
+        -u $USERNAME
+    "
 fi
 
 # Run the command in container
@@ -59,7 +65,6 @@ $CONTAINER_ENGINE run --rm $INTERACTIVE_FLAGS \
     --net=host \
     -v "$(pwd):$WORKSPACE" \
     -w "$WORKSPACE" \
-    -u "$USERNAME" \
     --env "HOME=/home/$USERNAME" \
     $CONTAINER_ENGINE_ARGS \
     "$IMAGE" \
