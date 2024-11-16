@@ -8,6 +8,7 @@ source .devenv
 # Parse command line arguments
 PLATFORM="${RCCN_USR_DEV_PLATFORM}"  # Default from .devenv
 IMAGE="${RCCN_USR_DEV_CONTAINER_IMAGE}"
+CONTAINER_ENGINE="docker"
 while [[ $# -gt 0 ]]; do
     case $1 in
         --platform=*)
@@ -16,6 +17,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --image=*)
             IMAGE="${1#*=}"
+            shift
+            ;;
+        --engine=*)
+            CONTAINER_ENGINE="${1#*=}"
             shift
             ;;
         *)
@@ -31,7 +36,7 @@ WORKSPACE="/home/rosdev/ros2_ws"
 # Check if we should build from Dockerfile or use existing image
 if [ -n "${RCCN_USR_DEV_CONTAINER_FILE:-}" ]; then
     echo "Building container from $RCCN_USR_DEV_CONTAINER_FILE..."
-    docker build -t local-dev-container -f "$RCCN_USR_DEV_CONTAINER_FILE" .
+    $CONTAINER_ENGINE build -t local-dev-container -f "$RCCN_USR_DEV_CONTAINER_FILE" .
     IMAGE="local-dev-container"
 fi
 
@@ -43,7 +48,7 @@ else
 fi
 
 # Run the command in container
-docker run --rm $INTERACTIVE_FLAGS \
+$CONTAINER_ENGINE run --rm $INTERACTIVE_FLAGS \
     --platform="$PLATFORM" \
     --net=host \
     -v "$(pwd):$WORKSPACE" \

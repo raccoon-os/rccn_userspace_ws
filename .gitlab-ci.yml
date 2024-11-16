@@ -5,7 +5,7 @@ workspace-x86:
   stage: build
   script:
     - git clean -fdx
-    - ./container.sh --platform=$PLATFORM ./build.sh
+    - ./container.sh --engine=podman --platform=$PLATFORM ./build.sh
     - ./scripts/ostree-push.sh $PLATFORM $CI_COMMIT_REF_NAME
 
   artifacts:
@@ -16,7 +16,7 @@ workspace-arm64:
   stage: build
   script:
     - git clean -fdx
-    - ./container.sh --image=rccn/usr-cross-compile ./cross-compile.sh
+    - ./container.sh --engine=podman --image=rccn/usr-cross-compile ./cross-compile.sh
     #- ./scripts/ostree-push.sh $PLATFORM $CI_COMMIT_REF_NAME
 
   artifacts:
