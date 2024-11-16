@@ -26,7 +26,7 @@ workspace-arm64:
       ./container.sh \
         --engine=podman \
         --image=docker.io/rccn/usr-cross-compile \
-        ./cross-compile.sh
+        ./cross-build.sh
 
     #- ./scripts/ostree-push.sh $PLATFORM $CI_COMMIT_REF_NAME
 
