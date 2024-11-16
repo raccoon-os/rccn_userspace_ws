@@ -51,7 +51,7 @@ CONTAINER_ENGINE_ARGS=""
 # Container-engine-specific arguments
 if [ "$CONTAINER_ENGINE" == "podman" ]; then
     CONTAINER_ENGINE_ARGS="\
-        -u $(id -u):$(id -g) --userns=keep-id
+        --userns=keep-id
     "
 else
     CONTAINER_ENGINE_ARGS="\
