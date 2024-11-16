@@ -6,7 +6,7 @@ set -x
 source .devenv
 
 # Parse command line arguments
-PLATFORM="${RCCN_USR_DEV_PLATFORM}"  # Default from .devenv
+PLATFORM="${RCCN_USR_DEV_PLATFORM:-linux/amd64}"  # Default from .devenv
 IMAGE="${RCCN_USR_DEV_CONTAINER_IMAGE}"
 CONTAINER_ENGINE="docker"
 while [[ $# -gt 0 ]]; do
@@ -60,6 +60,7 @@ $CONTAINER_ENGINE run --rm $INTERACTIVE_FLAGS \
     -v "$(pwd):$WORKSPACE" \
     -w "$WORKSPACE" \
     -u "$USERNAME" \
+    --env "HOME=/home/$USERNAME" \
     $CONTAINER_ENGINE_ARGS \
     "$IMAGE" \
     bash -c "$*"
