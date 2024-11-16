@@ -8,6 +8,4 @@ export IDL_PACKAGE_FILTER="std_msgs;rccn_usr_msgs;thermal_test_msgs"
 
 colcon build \
     --event-handlers console_direct+ \
-    --packages-up-to vacuum_test_node \
-    --cargo-args --verbose 
-
+    --packages-up-to rccn_usr_example_app
