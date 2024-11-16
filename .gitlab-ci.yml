@@ -1,18 +1,19 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
+default:
+  before_script:
+    - podman unshare git clean -fdx
+
 workspace-x86:
   stage: build
   script:
-    - git clean -fdx
-
     - |
       ./container.sh \
         --engine=podman \
         ./build.sh
 
-    - ./scripts/ostree-push.sh $PLATFORM $CI_COMMIT_REF_NAME
-
+    #- ./scripts/ostree-push.sh linux/amd64 $CI_COMMIT_REF_NAME
   artifacts:
     paths:
       - install/
@@ -20,8 +21,6 @@ workspace-x86:
 workspace-arm64:
   stage: build
   script:
-    - git clean -fdx
-
     - |
       ./container.sh \
         --engine=podman \
