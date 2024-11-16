@@ -47,6 +47,7 @@ else
     INTERACTIVE_FLAGS=""
 fi
 
+CONTAINER_ENGINE_ARGS=""
 # Container-engine-specific arguments
 if [[ "$CONTAINER_ENGINE" == "podman" ]]; then
     CONTAINER_ENGINE_ARGS = "--userns=keep-id"
