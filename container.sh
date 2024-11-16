@@ -47,6 +47,11 @@ else
     INTERACTIVE_FLAGS=""
 fi
 
+# Container-engine-specific arguments
+if [[ "$CONTAINER_ENGINE" == "podman" ]]; then
+    CONTAINER_ENGINE_ARGS = "--userns=keep-id"
+fi
+
 # Run the command in container
 $CONTAINER_ENGINE run --rm $INTERACTIVE_FLAGS \
     --platform="$PLATFORM" \
@@ -54,5 +59,6 @@ $CONTAINER_ENGINE run --rm $INTERACTIVE_FLAGS \
     -v "$(pwd):$WORKSPACE" \
     -w "$WORKSPACE" \
     -u "$USERNAME" \
+    $CONTAINER_ENGINE_ARGS \
     "$IMAGE" \
     bash -c "$*"
