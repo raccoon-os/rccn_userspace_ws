@@ -3,7 +3,7 @@ variables:
 
 default:
   after_script:
-    - podman unshare git clean -fdx
+    - podman unshare rm -rf build install log
 
 workspace-x86:
   stage: build
