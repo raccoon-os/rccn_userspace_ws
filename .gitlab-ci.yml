@@ -3,7 +3,7 @@ variables:
 
 default:
   after_script:
-    - podman unshare rm -rf build install log
+    - podman unshare rm -rf build install log target
 
 workspace-x86:
   stage: build
@@ -38,4 +38,4 @@ workspace-arm64:
 
   artifacts:
     paths:
-      - out
+      - out/
