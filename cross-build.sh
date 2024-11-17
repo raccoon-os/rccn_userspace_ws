@@ -71,3 +71,4 @@ cp \
     $PWD/install/target/lib/rccn_usr_example_app
 
 exit 0
+
