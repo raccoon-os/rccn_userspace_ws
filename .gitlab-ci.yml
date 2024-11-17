@@ -2,7 +2,7 @@ variables:
   GIT_SUBMODULE_STRATEGY: recursive
 
 default:
-  before_script:
+  after_script:
     - podman unshare git clean -fdx
 
 workspace-x86:
@@ -14,9 +14,13 @@ workspace-x86:
         ./build.sh
 
     #- ./scripts/ostree-push.sh linux/amd64 $CI_COMMIT_REF_NAME
+
+    - mkdir out
+    - cp -r install/* out
+
   artifacts:
     paths:
-      - install/
+      - out/
 
 workspace-arm64:
   stage: build
@@ -27,8 +31,11 @@ workspace-arm64:
         --image=docker.io/rccn/usr-cross-compile \
         ./cross-build.sh
 
+    - mkdir out
+    - cp -r install/target/* out
+
     #- ./scripts/ostree-push.sh $PLATFORM $CI_COMMIT_REF_NAME
 
   artifacts:
     paths:
-      - install/target
+      - out
