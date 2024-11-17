@@ -65,9 +65,9 @@ cargo.real build \
     --bin rccn_usr_example_app \
     --locked
 
-mkdir -p $PWD/install/lib/rccn_usr_example_app
+mkdir -p $PWD/install/target/lib/rccn_usr_example_app
 cp \
     $PWD/target/aarch64-poky-linux-gnu/debug/rccn_usr_example_app \
-    $PWD/install/lib/rccn_usr_example_app
+    $PWD/install/target/lib/rccn_usr_example_app
 
 exit 0
