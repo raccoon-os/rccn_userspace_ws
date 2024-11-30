@@ -14,4 +14,5 @@ lto = true
 codegen-units = 1
 opt-level = "z"
 strip = true
-panic = "abort"
+# https://github.com/meta-rust/meta-rust/issues/343
+#panic = "abort"

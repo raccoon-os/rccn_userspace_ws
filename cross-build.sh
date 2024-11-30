@@ -34,22 +34,14 @@ export BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$OECORE_TARGET_SYSROOT $ARCH_FLAGS"
 
 export LD_LIBRARY_PATH="$PWD/install/host/lib:/opt/raccoon/0.4/sysroots/x86_64-pokysdk-linux/usr/opt/ros/humble/lib:$LD_LIBRARY_PATH"
 export LD_LIBRARY_PATH="$PWD/install/target/lib:$OECORE_TARGET_SYSROOT/usr/opt/ros/humble/lib:$LD_LIBRARY_PATH"
+#export LD_LIBRARY_PATH="$OECORE_NATIVE_SYSROOT/usr/lib:$LD_LIBRARY_PATH"
 export AMENT_PREFIX_PATH="$PWD/install/host:$AMENT_PREFIX_PATH"
 export AMENT_PREFIX_PATH="$PWD/install/target:$AMENT_PREFIX_PATH"
 export AMENT_PREFIX_PATH="$OECORE_TARGET_SYSROOT/usr/opt/ros/$ROS_DISTRO:$AMENT_PREFIX_PATH"
+#export PATH="/opt/raccoon/0.4/sysroots/x86_64-pokysdk-linux/bin/:$PATH"
 
 
-# Cross-compile workspace
-colcon build \
-    --merge-install \
-    --build-base "$PWD/build/target" \
-    --install-base "$PWD/install/target" \
-    --cmake-args \
-    " -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE" \
-    " -DCMAKE_STAGING_PREFIX=$PWD/install/target" \
-    " -DBUILD_TESTING=OFF" \
-    " -DPython3_NumPy_INCLUDE_DIR=$OECORE_TARGET_SYSROOT/usr/lib/python3.12/site-packages/numpy/core/include" \
-    " $ARCH_FLAGS"
+export PYTHON_SOABI="cpython-312-aarch64-linux-gnu"
 
 
 cat >/tmp/ld-wrapper <<EOF
@@ -59,10 +51,37 @@ EOF
 chmod +x /tmp/ld-wrapper
 export CARGO_TARGET_AARCH64_POKY_LINUX_GNU_LINKER="/tmp/ld-wrapper"
 
+cat >/tmp/cargo <<EOF
+#!/bin/sh
+echo "hello from the realest of cargos"
+cargo.real "\$@"
+EOF
+chmod +x /tmp/cargo
+export PATH="/tmp:$PATH"
+
 export IDL_PACKAGE_FILTER="std_msgs;rccn_usr_msgs;thermal_test_msgs"
 
+# Cross-compile workspace
+colcon build \
+    --merge-install \
+    --build-base "$PWD/build/target" \
+    --install-base "$PWD/install/target" \
+    --cmake-args \
+        " -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE" \
+        " -DCMAKE_STAGING_PREFIX=$PWD/install/target" \
+        " -DBUILD_TESTING=OFF" \
+        " -DPython3_NumPy_INCLUDE_DIR=$OECORE_TARGET_SYSROOT/usr/lib/python3.12/site-packages/numpy/core/include" \
+        " -DPYTHON_SOABI=$PYTHON_SOABI" \
+        " $ARCH_FLAGS" \
+    --event-handlers console_direct+ \
+    --rust-target aarch64-poky-linux-gnu \
+    --cargo-args \
+        " --release" \
+    --packages-up-to vacuum_test_node thermal_test_controller rccn_usr_comm 
+
+exit 0
+
 cargo.real build \
-    --bin rccn_usr_example_app \
     --locked
 
 mkdir -p $PWD/install/target/lib/rccn_usr_example_app
