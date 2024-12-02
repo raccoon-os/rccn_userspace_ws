@@ -1,23 +1,22 @@
 use super::{
-    ros2::{Ros2ReaderConfig, Ros2TransportError, Ros2TransportHandler, SharedNode},
-    udp::UdpTransportHandler,
-    RxTransport, TransportHandler, TransportResult, TxTransport,
+    udp::AsyncUdpTransportHandler, zenoh::ZenohTransportHandler, RxTransport, TransportHandler,
+    TxTransport,
 };
 use crate::{
     config::VirtualChannel,
     types::{VirtualChannelRxMap, VirtualChannelTxMap},
 };
-use crossbeam_channel::{bounded, Receiver, Sender};
-use std::{
-    net::SocketAddr,
-    thread::{self, JoinHandle},
-};
+use crossbeam_channel::bounded;
+use std::net::SocketAddr;
 use thiserror::Error;
+use zenoh::Session;
 
 #[derive(Error, Debug)]
 pub enum TransportManagerError {
-    #[error("ROS2 transport error: {0}")]
-    Ros2Error(#[from] Ros2TransportError),
+    #[error("Zenoh error: {0}")]
+    ZenohError(#[from] zenoh::Error),
+    #[error("IO error: {0}")]
+    IOError(#[from] std::io::Error),
     #[error("Address parse error: {0}")]
     AddrParse(std::net::AddrParseError),
     #[error("Invalid configuration: {0}")]
@@ -25,8 +24,8 @@ pub enum TransportManagerError {
 }
 
 pub struct TransportManager {
-    udp_handler: UdpTransportHandler,
-    ros2_handler: Ros2TransportHandler,
+    pub udp_handler: AsyncUdpTransportHandler,
+    zenoh_handler: ZenohTransportHandler,
     vc_tx_map: VirtualChannelTxMap,
     vc_rx_map: VirtualChannelRxMap,
 }
@@ -34,24 +33,24 @@ pub struct TransportManager {
 impl TransportManager {
     // TODO: Refactor the `new` methods.
     // TransportManager should be able to be used even if not(cfg(ros2))
-    pub fn new(ros2_node_prefix: String) -> Result<Self, TransportManagerError> {
+    pub async fn new() -> Result<Self, TransportManagerError> {
         Ok(Self {
-            udp_handler: UdpTransportHandler::new(),
-            ros2_handler: Ros2TransportHandler::new(&ros2_node_prefix)?,
+            udp_handler: AsyncUdpTransportHandler::new(),
+            zenoh_handler: ZenohTransportHandler::new().await?,
             vc_tx_map: VirtualChannelTxMap::new(),
             vc_rx_map: VirtualChannelRxMap::new(),
         })
     }
-    pub fn new_with_ros2_node(node: SharedNode) -> Result<Self, TransportManagerError> {
+    pub fn new_with_z_session(session: Session) -> Result<Self, TransportManagerError> {
         Ok(Self {
-            udp_handler: UdpTransportHandler::new(),
-            ros2_handler: Ros2TransportHandler::new_with_node(node)?,
+            udp_handler: AsyncUdpTransportHandler::new(),
+            zenoh_handler: ZenohTransportHandler::new_with_session(session),
             vc_tx_map: VirtualChannelTxMap::new(),
             vc_rx_map: VirtualChannelRxMap::new(),
         })
     }
 
-    pub fn add_virtual_channel(
+    pub async fn add_virtual_channel(
         &mut self,
         vc: &VirtualChannel,
     ) -> Result<(), TransportManagerError> {
@@ -65,10 +64,17 @@ impl TransportManager {
                         .send
                         .parse()
                         .map_err(|e| TransportManagerError::AddrParse(e))?;
-                    self.add_udp_writer(vc_in_rx, addr);
+
+                    self.udp_handler
+                        .add_transport_writer(vc_in_rx, addr)
+                        .await
+                        .map_err(TransportManagerError::IOError)?;
                 }
-                TxTransport::Ros2(ros2_transport) => {
-                    self.add_ros2_writer(vc_in_rx, ros2_transport.topic_pub.clone());
+                TxTransport::Zenoh(z_transport) => {
+                    self.zenoh_handler
+                        .add_transport_writer(vc_in_rx, z_transport.key_pub.clone())
+                        .await
+                        .map_err(TransportManagerError::ZenohError)?;
                 }
             }
 
@@ -85,20 +91,17 @@ impl TransportManager {
                         .listen
                         .parse()
                         .map_err(|e| TransportManagerError::AddrParse(e))?;
-                    self.add_udp_reader(vc_out_tx, addr);
-                }
-                RxTransport::Ros2(ros2_transport) => {
-                    let reader_config = if let Some(topic) = &ros2_transport.topic_sub {
-                        Ros2ReaderConfig::Subscription(topic.clone())
-                    } else if let Some(action_srv) = &ros2_transport.action_srv {
-                        Ros2ReaderConfig::ActionServer(action_srv.clone())
-                    } else {
-                        return Err(TransportManagerError::InvalidConfig(
-                            "ROS2 rx transport needs either topic_sub or action_srv".into(),
-                        ));
-                    };
 
-                    self.add_ros2_reader(vc_out_tx, reader_config);
+                    self.udp_handler
+                        .add_transport_reader(vc_out_tx, addr)
+                        .await
+                        .map_err(TransportManagerError::IOError)?;
+                }
+                RxTransport::Zenoh(z_transport) => {
+                    self.zenoh_handler
+                        .add_transport_reader(vc_out_tx, z_transport.key_sub.clone())
+                        .await
+                        .map_err(TransportManagerError::ZenohError)?;
                 }
             }
 
@@ -111,35 +114,10 @@ impl TransportManager {
     pub fn get_vc_maps(&self) -> (&VirtualChannelTxMap, &VirtualChannelRxMap) {
         (&self.vc_tx_map, &self.vc_rx_map)
     }
-
-    pub fn add_udp_reader(&mut self, tx: Sender<Vec<u8>>, addr: std::net::SocketAddr) {
-        self.udp_handler.add_transport_reader(tx, addr);
+    pub fn tx_map(&self) -> &VirtualChannelTxMap {
+        &self.vc_tx_map
     }
-
-    pub fn add_udp_writer(&mut self, rx: Receiver<Vec<u8>>, addr: std::net::SocketAddr) {
-        self.udp_handler.add_transport_writer(rx, addr);
-    }
-
-    pub fn add_ros2_reader(&mut self, tx: Sender<Vec<u8>>, config: Ros2ReaderConfig) {
-        self.ros2_handler.add_transport_reader(tx, config);
-    }
-
-    pub fn add_ros2_writer(&mut self, rx: Receiver<Vec<u8>>, topic: String) {
-        self.ros2_handler.add_transport_writer(rx, topic);
-    }
-
-    pub fn run(
-        self,
-    ) -> (
-        (VirtualChannelTxMap, VirtualChannelRxMap),
-        Vec<JoinHandle<TransportResult>>,
-    ) {
-        (
-            (self.vc_tx_map, self.vc_rx_map),
-            vec![
-                thread::spawn(move || self.udp_handler.run()),
-                thread::spawn(move || self.ros2_handler.run()),
-            ],
-        )
+    pub fn rx_map(&self) -> &VirtualChannelRxMap {
+        &self.vc_rx_map
     }
 }

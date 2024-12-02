@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use zenoh::key_expr::OwnedKeyExpr;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct UdpTxTransport {
@@ -11,50 +12,51 @@ pub struct UdpRxTransport {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Ros2TxTransport {
-    pub topic_pub: String
-}
-
-impl From<&str> for Ros2TxTransport {
-    fn from(topic: &str) -> Self {
-        Self {
-            topic_pub: topic.to_string()
-        }
-    }
+pub struct ZenohTxTransport {
+    pub key_pub: OwnedKeyExpr
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Ros2RxTransport {
-    pub topic_sub: Option<String>,
-    pub action_srv: Option<String>
+pub struct ZenohRxTransport {
+    pub key_sub: OwnedKeyExpr
 }
 
-impl Ros2RxTransport {
-    pub fn with_topic(topic: &str) -> Self {
-        Self {
-            topic_sub: Some(topic.to_string()),
-            action_srv: None
-        }
-    }
-
-    pub fn with_action(action: &str) -> Self {
-        Self {
-            topic_sub: None,
-            action_srv: Some(action.to_string())
-        }
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum TxTransport {
     Udp(UdpTxTransport),
-    Ros2(Ros2TxTransport)
+    Zenoh(ZenohTxTransport)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 pub enum RxTransport {
     Udp(UdpRxTransport),
-    Ros2(Ros2RxTransport)
+    Zenoh(ZenohRxTransport)
+}
+
+
+impl TryFrom<&str> for ZenohTxTransport {
+    type Error = zenoh::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let kexpr = OwnedKeyExpr::new(value)?;
+
+        Ok(ZenohTxTransport {
+            key_pub: kexpr
+        })
+    }
+}
+
+impl TryFrom<&str> for ZenohRxTransport {
+    type Error = zenoh::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let kexpr = OwnedKeyExpr::new(value)?;
+
+        Ok(ZenohRxTransport {
+            key_sub: kexpr
+        })
+    }
 }

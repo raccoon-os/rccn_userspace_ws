@@ -1,7 +1,9 @@
-
 use crossbeam::channel::Select;
 use rccn_usr::{
-    config::VirtualChannel, service::{AcceptanceResult, CommandReplyBase, PusAppBase, PusService}, transport::{manager::TransportManagerError, ros2::SharedNode, TransportManager}, types::{Receiver, Sender, VcId}
+    config::VirtualChannel,
+    service::{AcceptanceResult, CommandReplyBase, PusAppBase, PusService},
+    transport::{manager::TransportManagerError, TransportManager},
+    types::{Receiver, Sender, VcId},
 };
 
 type ServiceHandler = Box<dyn FnMut(&[u8], CommandReplyBase) -> AcceptanceResult + Send>;
@@ -13,19 +15,11 @@ pub struct PusApp {
 }
 
 impl PusApp {
-    pub fn new(apid: u16, ros2_node_prefix: String) -> Self {
+    pub async fn new(apid: u16) -> Self {
         Self {
-            transport_manager: TransportManager::new(ros2_node_prefix).unwrap(),
+            transport_manager: TransportManager::new().await.unwrap(),
             handlers: Vec::new(),
             base: PusAppBase::new(apid, 0),
-        }
-    }
-
-    pub fn new_with_ros2_node(apid: u16, node: SharedNode) -> Self {
-        Self {
-            transport_manager: TransportManager::new_with_ros2_node(node).unwrap(),
-            handlers: Vec::new(),
-            base: PusAppBase::new(apid, 0)
         }
     }
 
@@ -36,8 +30,11 @@ impl PusApp {
         self.handlers.push((S::service(), handler));
     }
 
-    pub fn add_virtual_channel(&mut self, vc: &VirtualChannel) -> Result<(), TransportManagerError> {
-        self.transport_manager.add_virtual_channel(vc)
+    pub async fn add_virtual_channel(
+        &mut self,
+        vc: &VirtualChannel,
+    ) -> Result<(), TransportManagerError> {
+        self.transport_manager.add_virtual_channel(vc).await
     }
 
     fn handle_tc_internal(
@@ -63,8 +60,8 @@ impl PusApp {
     }
 
     pub fn run(mut self) {
-        // Run transports and get maps of VC IDs to TX/RX channels
-        let ((vc_tx_map, vc_rx_map), _handles) = self.transport_manager.run();
+        let tx_map = self.transport_manager.tx_map();
+        let rx_map = self.transport_manager.rx_map();
 
         // Vec to track of the VC ID, TX channel and RX channel
         // for each RX we add to the select operation
@@ -73,11 +70,11 @@ impl PusApp {
         // Select object to wait on multiple RX channels
         let mut select = Select::new();
 
-        for (vc_id, rx) in vc_rx_map.iter() {
+        for (vc_id, rx) in rx_map.iter() {
             // Add RX channel for this VC to the select object
             select.recv(rx);
 
-            let tx = vc_tx_map.get(vc_id).unwrap(); // TODO make tx side optional
+            let tx = tx_map.get(vc_id).unwrap(); // TODO make tx side optional
             vc_info.push((*vc_id, rx, tx));
         }
 
@@ -121,12 +118,12 @@ mod tests {
         value: u32,
     }
 
-    #[test]
-    fn test_register_and_handle_service() {
+    #[tokio::test]
+    async fn test_register_and_handle_service() {
         let (tm_tx, tm_rx) = bounded(4);
 
         // Create PusApp and register ParameterManagementService
-        let mut app = PusApp::new(1, "test".into());
+        let mut app = PusApp::new(1).await;
         let parameters = Arc::new(Mutex::new(TestParameters { value: 42 }));
         let service = ParameterManagementService::new(parameters);
         app.register_service(service);

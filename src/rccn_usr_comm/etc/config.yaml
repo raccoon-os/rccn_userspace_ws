@@ -19,11 +19,11 @@ virtual_channels:
     splitter: space_packet
 
     tx_transport:
-      kind: ros2
-      topic_pub: /vc/bus_realtime/rx
+      kind: zenoh
+      key_pub: vc/bus_realtime/rx
     rx_transport:
-      kind: ros2
-      topic_sub: /vc/bus_realtime/tx
+      kind: zenoh
+      key_sub: vc/bus_realtime/tx
 
   - id: 1
     name: cfdp

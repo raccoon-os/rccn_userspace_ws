@@ -1,10 +1,9 @@
 pub mod udp;
-pub mod ros2;
+pub mod zenoh;
 pub mod manager;
 pub mod config;
 
 use thiserror::Error;
-pub use udp::*;
 pub use manager::TransportManager;
 pub use config::{TxTransport, RxTransport};
 
@@ -38,8 +37,8 @@ pub const TRANSPORT_BUFFER_SIZE: usize = 8096;
 pub trait TransportHandler {
     type WriterConfig;
     type ReaderConfig;
+    type Error;
     
-    fn add_transport_writer(&mut self, rx: Receiver<Vec<u8>>, config: Self::WriterConfig);
-    fn add_transport_reader(&mut self, tx: Sender<Vec<u8>>, config: Self::ReaderConfig);
-    fn run(self) -> TransportResult;
+    async fn add_transport_writer(&self, rx: Receiver<Vec<u8>>, config: Self::WriterConfig) -> Result<(), Self::Error>;
+    async fn add_transport_reader(&self, tx: Sender<Vec<u8>>, config: Self::ReaderConfig) -> Result<(), Self::Error>;
 }

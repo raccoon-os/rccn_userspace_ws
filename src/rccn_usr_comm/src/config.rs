@@ -96,15 +96,6 @@ impl Config {
                     vc.id
                 )));
             }
-
-            if let Some(RxTransport::Ros2(t)) = &vc.rx_transport {
-                if t.topic_sub.is_none() && t.action_srv.is_none() {
-                    return Err(ConfigError::Validation(format!(
-                        "Need `topic_sub` or `action_srv` for output transport of VC {}",
-                        vc.name
-                    )));
-                }
-            }
         }
 
         Ok(())
